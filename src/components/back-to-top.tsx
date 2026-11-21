@@ -1,0 +1,18 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+export function BackToTop() {
+  const [visible, setVisible] = useState(false);
+
+  useEffect(() => {
+    const update = () => setVisible(window.scrollY > 300);
+    window.addEventListener("scroll", update, { passive: true });
+    update();
+    return () => window.removeEventListener("scroll", update);
+  }, []);
+
+  if (!visible) return null;
+
+  return <button className="back-to-top" type="button" aria-label="Wróć na górę strony" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}>↑</button>;
+}
