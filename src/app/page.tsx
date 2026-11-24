@@ -33,7 +33,7 @@ export default async function HomePage() {
       </section>
 
       <section className="landing-section landing-panel" id="galeria">
-        <div><p className="eyebrow">Odkryj przestrzeń</p><h2>Galeria</h2><p>Wejdź do wirtualnej galerii i poczuj jakby obrazy wisiały na ścianie tuż przed Twoimi oczami.</p></div>
+        <div><p className="eyebrow">Odkryj przestrzeń</p><h2>Galeria</h2><p>Wejdź do wirtualnej galerii i stań oko w oko z prawdziwą sztuką.</p></div>
         <Link className="button" href="/galeria">Wybierz salę <span aria-hidden="true">→</span></Link>
       </section>
 

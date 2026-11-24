@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtworkImageViewer } from "@/components/artwork-image-viewer";
+import { ArtworkBackButton } from "@/components/artwork-back-button";
 import { availabilityLabels, canOfferDirectSale } from "@/lib/catalog";
 import { getPublicArtwork } from "@/lib/catalog.server";
 
@@ -18,7 +19,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
   return (
     <article className="artwork-page">
-      <Link className="back-link" href="/dziela">← Wróć do katalogu</Link>
+      <ArtworkBackButton />
       <div className="artwork-layout">
         <div className="artwork-view">
           {galleryImages.length ? (

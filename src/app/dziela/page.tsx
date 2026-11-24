@@ -1,4 +1,4 @@
-import { ArtworkCard } from "@/components/artwork-card";
+import { ArtworksCatalog } from "@/components/artworks-catalog";
 import { EmptyState } from "@/components/empty-state";
 import { sortArtworksBySizeDescending } from "@/lib/catalog";
 import { getPublicArtworks } from "@/lib/catalog.server";
@@ -20,11 +20,7 @@ export default async function ArtworksPage() {
 
   return (
     <section className="content-section" aria-labelledby="artworks-title">
-      <p className="eyebrow">Katalog</p>
-      <h1 id="artworks-title">Dzieła</h1>
-      <div className="artwork-grid">
-        {sortedArtworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} />)}
-      </div>
+      <ArtworksCatalog initialArtworks={sortedArtworks} />
     </section>
   );
 }

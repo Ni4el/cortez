@@ -46,6 +46,8 @@ export default function AdminPage() {
   const [checking, setChecking] = useState(true);
   const [section, setSection] = useState<Section>("photos");
   const [artworks, setArtworks] = useState<Artwork[]>([]);
+  const [artworkSortField, setArtworkSortField] = useState<"order" | "title">("order");
+  const [artworkSortDirection, setArtworkSortDirection] = useState<"asc" | "desc">("asc");
   const [tags, setTags] = useState<Tag[]>([]);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
@@ -59,6 +61,7 @@ export default function AdminPage() {
   const [artworkForm, setArtworkForm] = useState<Record<string, string>>(emptyArtwork);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [artworkFiles, setArtworkFiles] = useState<File[]>([]);
+  const [fileResetKey, setFileResetKey] = useState(0);
   const [tagName, setTagName] = useState("");
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [editingRoom, setEditingRoom] = useState<Room | null>(null);
@@ -101,8 +104,12 @@ export default function AdminPage() {
     setMedia((results[4].data ?? []) as Media[]);
     setArtworkTags((results[5].data ?? []) as { artwork_id: string; tag_id: string }[]);
     setRoomArtwork((results[6].data ?? []) as { artwork_id: string; room_id: string }[]);
+    if (!editingArtwork) {
+      setSelectedTags([]);
+      setArtworkFiles([]);
+    }
     setChecking(false);
-  }, [supabase]);
+  }, [supabase, editingArtwork]);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => { void verifyAndLoad(); }, 0);
@@ -145,6 +152,14 @@ export default function AdminPage() {
     }
   }
 
+  function resetArtworkForm() {
+    setEditingArtwork(null);
+    setArtworkForm(emptyArtwork);
+    setSelectedTags([]);
+    setArtworkFiles([]);
+    setFileResetKey((prev) => prev + 1);
+  }
+
   function editArtwork(artwork: Artwork) {
     setEditingArtwork(artwork);
     const next = { ...emptyArtwork };
@@ -152,6 +167,7 @@ export default function AdminPage() {
     setArtworkForm(next);
     setSelectedTags(artworkTags.filter((link) => link.artwork_id === artwork.id).map((link) => link.tag_id));
     setArtworkFiles([]);
+    setFileResetKey((prev) => prev + 1);
   }
 
   async function saveArtwork(event: FormEvent<HTMLFormElement>) {
@@ -222,7 +238,9 @@ export default function AdminPage() {
       }
       uploadedPaths.length = 0;
       createdArtworkId = undefined;
-      setNotice("Dzieło zapisano."); setEditingArtwork(null); setArtworkForm(emptyArtwork); setArtworkFiles([]); await verifyAndLoad();
+      setNotice("Dzieło zapisano.");
+      resetArtworkForm();
+      await verifyAndLoad();
     } catch (cause) {
       const messages = [messageFrom(cause as { message?: string }, "Nie udało się zapisać dzieła.")];
       if (editingArtwork && primaryImageUpdated) {
@@ -405,11 +423,68 @@ export default function AdminPage() {
 
   return <section className="admin-panel">
     <header className="admin-heading"><div><p className="eyebrow">Portfolio Cortez</p><h1>Panel administracyjny</h1></div><button type="button" className="admin-button" onClick={() => void logout()}>Wyloguj</button></header>
-    <nav className="admin-tabs" aria-label="Sekcje panelu">{sections.map((item) => <button key={item.id} type="button" className={section === item.id ? "is-active" : ""} onClick={() => { clearMessages(); setSection(item.id); }}>{item.label}</button>)}</nav>
+    <nav className="admin-tabs" aria-label="Sekcje panelu">{sections.map((item) => <button key={item.id} type="button" className={section === item.id ? "is-active" : ""} onClick={() => { clearMessages(); setSection(item.id); resetArtworkForm(); }}>{item.label}</button>)}</nav>
     {notice && <p className="admin-notice" role="status">{notice}</p>}{error && <p className="admin-error" role="alert">{error}</p>}
 
-    {section === "photos" && <div className="admin-columns"><div><div className="admin-section-title"><h2>Dzieła i zdjęcia</h2><button className="admin-button" type="button" onClick={() => { setEditingArtwork(null); setArtworkForm(emptyArtwork); setSelectedTags([]); setArtworkFiles([]); }}>+ Dodaj dzieło</button></div><div className="admin-list">{artworks.map((artwork) => { const image = media.find((asset) => asset.id === artwork.image_id) ?? media.find((asset) => asset.artwork_id === artwork.id && asset.role === "thumbnail"); const src = image ? supabase?.storage.from(image.storage_bucket).getPublicUrl(image.storage_path).data.publicUrl : null; return <article className="admin-row" key={artwork.id}>{src && <Image src={src} alt="" width={64} height={64} unoptimized />}<div><strong>{artwork.title || artwork.slug}</strong><small>{artwork.slug} · {String(artwork.publication_status || "draft")}</small></div><button className="admin-button" type="button" onClick={() => editArtwork(artwork)}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeArtwork(artwork)}>Usuń</button></article>; })}{!artworks.length && <p>Brak dzieł w bazie.</p>}</div></div>
-      <form className="admin-form admin-editor" onSubmit={saveArtwork}><h2>{editingArtwork ? "Edycja dzieła" : "Nowe dzieło"}</h2><ImageField id="artwork-image" key={`${editingArtwork?.id ?? "new"}-${artworkFiles.length}`} multiple onChange={setArtworkFiles} />
+    {section === "photos" && (() => {
+      const sortedAdminArtworks = [...artworks].sort((a, b) => {
+        if (artworkSortField === "order") {
+          const orderA = Number(a.order ?? 0);
+          const orderB = Number(b.order ?? 0);
+          if (orderA !== orderB) {
+            return artworkSortDirection === "asc" ? orderA - orderB : orderB - orderA;
+          }
+          const titleA = String(a.title || a.slug || "").toLowerCase();
+          const titleB = String(b.title || b.slug || "").toLowerCase();
+          return titleA.localeCompare(titleB, "pl");
+        } else {
+          const titleA = String(a.title || a.slug || "").toLowerCase();
+          const titleB = String(b.title || b.slug || "").toLowerCase();
+          const cmp = titleA.localeCompare(titleB, "pl");
+          if (cmp !== 0) {
+            return artworkSortDirection === "asc" ? cmp : -cmp;
+          }
+          const orderA = Number(a.order ?? 0);
+          const orderB = Number(b.order ?? 0);
+          return artworkSortDirection === "asc" ? orderA - orderB : orderB - orderA;
+        }
+      });
+
+      return <div className="admin-columns"><div><div className="admin-section-title"><h2>Dzieła i zdjęcia</h2><button className="admin-button" type="button" onClick={resetArtworkForm}>+ Dodaj dzieło</button></div>
+        <div className="admin-sort-bar">
+          <span>Sortuj po:</span>
+          <select value={artworkSortField} onChange={(e) => setArtworkSortField(e.target.value as "order" | "title")} aria-label="Pole sortowania">
+            <option value="order">Kolejność (order)</option>
+            <option value="title">Nazwa (tytuł)</option>
+          </select>
+          <button type="button" className="admin-button" onClick={() => setArtworkSortDirection((dir) => (dir === "asc" ? "desc" : "asc"))} title={artworkSortDirection === "asc" ? "Zmień na malejąco (DESC)" : "Zmień na rosnąco (ASC)"}>
+            {artworkSortDirection === "asc" ? "ASC ↑" : "DESC ↓"}
+          </button>
+        </div>
+        <div className="admin-list">{sortedAdminArtworks.map((artwork) => { const image = media.find((asset) => asset.id === artwork.image_id) ?? media.find((asset) => asset.artwork_id === artwork.id && asset.role === "thumbnail"); const src = image ? supabase?.storage.from(image.storage_bucket).getPublicUrl(image.storage_path).data.publicUrl : null; return <article className="admin-row" key={artwork.id}>{src && <Image src={src} alt="" width={64} height={64} unoptimized />}<div><strong>{artwork.title || artwork.slug}</strong><small>Kolejność: {String(artwork.order ?? 0)} · {artwork.slug} · {String(artwork.publication_status || "draft")}</small></div><button className="admin-button" type="button" onClick={() => editArtwork(artwork)}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeArtwork(artwork)}>Usuń</button></article>; })}{!sortedAdminArtworks.length && <p>Brak dzieł w bazie.</p>}</div></div>
+      <form className="admin-form admin-editor" onSubmit={saveArtwork} autoComplete="off"><h2>{editingArtwork ? "Edycja dzieła" : "Nowe dzieło"}</h2><ImageField id="artwork-image" key={`artwork-image-${editingArtwork?.id ?? "new"}-${fileResetKey}`} multiple onChange={setArtworkFiles} />
+        {artworkFiles.length > 0 && (
+          <div className="admin-pending-files">
+            <span className="admin-pending-files-title">Wybrane pliki do wgrania ({artworkFiles.length}):</span>
+            <ul>
+              {artworkFiles.map((file, idx) => (
+                <li key={`${file.name}-${idx}`}>
+                  {file.name} ({Math.round(file.size / 1024)} KB)
+                </li>
+              ))}
+            </ul>
+            <button
+              type="button"
+              className="admin-button"
+              onClick={() => {
+                setArtworkFiles([]);
+                setFileResetKey((prev) => prev + 1);
+              }}
+            >
+              Wyczyść wybrane pliki
+            </button>
+          </div>
+        )}
         {editingArtwork && <div className="admin-image-list"><h3>Zdjęcia zapisane przy dziele</h3>{media.filter((asset) => asset.artwork_id === editingArtwork.id && (asset.role === "thumbnail" || asset.role === "high_resolution")).sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0)).map((asset) => { const src = supabase?.storage.from(asset.storage_bucket).getPublicUrl(asset.storage_path).data.publicUrl; return <article className="admin-image-row" key={asset.id}>{src && <Image src={src} alt={String(asset.alt_text ?? "")} width={88} height={88} unoptimized />}<span>{asset.role === "thumbnail" ? "Główne" : "Dodatkowe"}</span><button className="admin-button admin-danger" type="button" disabled={busy} onClick={() => void removeArtworkImage(editingArtwork, asset)}>Usuń zdjęcie</button></article>; })}{!media.some((asset) => asset.artwork_id === editingArtwork.id && (asset.role === "thumbnail" || asset.role === "high_resolution")) && <p>To dzieło nie ma jeszcze zapisanych zdjęć.</p>}</div>}
         <label className="admin-field">Tytuł<input value={artworkForm.title} onChange={(event) => setArtworkForm({ ...artworkForm, title: event.target.value })} /></label>
         <label className="admin-field">Slug<input value={artworkForm.slug} onChange={(event) => setArtworkForm({ ...artworkForm, slug: event.target.value })} placeholder="tworzy-się-z-tytułu" /></label>
@@ -417,9 +492,10 @@ export default function AdminPage() {
         <div className="admin-field-grid">{[["year","Rok"],["size","Rozmiar"],["place","Miejsce"],["frame","Rama"],["price_pln","Cena PLN"],["order","Kolejność"]].map(([key,label]) => <label className="admin-field" key={key}>{label}<input type={key === "order" || key === "price_pln" ? "number" : "text"} value={artworkForm[key]} onChange={(event) => setArtworkForm({ ...artworkForm, [key]: event.target.value })} /></label>)}</div>
         {[ ["availability","Dostępność",["available","reserved","sold","gifted","not_for_sale"]], ["publication_status","Publikacja",["draft","published","hidden"]], ["sale_mode","Tryb sprzedaży",["direct","inquiry","none"]], ["method","Technika",["","Olej na płycie","Olej na płótnie","Ołówek na papierze"]], ["author","Autor",["","cortez","rembrant","wierusz-kowalski"]] ].map(([key,label,options]) => <label className="admin-field" key={String(key)}>{String(label)}<select value={artworkForm[String(key)]} onChange={(event) => setArtworkForm({ ...artworkForm, [String(key)]: event.target.value })}>{(options as string[]).map((option) => <option key={option || "empty"} value={option}>{option || "—"}</option>)}</select></label>)}
         <label className="admin-check"><input type="checkbox" checked={artworkForm.is_main === "true"} onChange={(event) => setArtworkForm({ ...artworkForm, is_main: String(event.target.checked) })} /> Użyj jako tła strony głównej</label>
-        <fieldset className="admin-tag-picker"><legend>Tagi</legend>{tags.map((tag) => <label key={tag.id}><input type="checkbox" checked={selectedTags.includes(tag.id)} onChange={(event) => setSelectedTags(event.target.checked ? [...selectedTags, tag.id] : selectedTags.filter((id) => id !== tag.id))} /> {tag.name}</label>)}{!tags.length && <small>Najpierw dodaj tagi w sekcji Tagi.</small>}</fieldset>
-        <div className="admin-form-actions"><button className="button" disabled={busy}>{busy ? "Zapisuję…" : "Zapisz dzieło"}</button>{editingArtwork && <button type="button" className="admin-button" onClick={() => { setEditingArtwork(null); setArtworkForm(emptyArtwork); }}>Anuluj edycję</button>}</div>
-      </form></div>}
+        <fieldset className="admin-tag-picker"><legend>Tagi {selectedTags.length > 0 && <button type="button" className="admin-tag-clear" onClick={() => setSelectedTags([])}>(odznacz wszystkie)</button>}</legend>{tags.map((tag) => <label key={tag.id}><input type="checkbox" id={`tag-${tag.id}`} name={`tag-${tag.id}`} autoComplete="off" checked={selectedTags.includes(tag.id)} onChange={(event) => setSelectedTags(event.target.checked ? [...selectedTags, tag.id] : selectedTags.filter((id) => id !== tag.id))} /> {tag.name}</label>)}{!tags.length && <small>Najpierw dodaj tagi w sekcji Tagi.</small>}</fieldset>
+        <div className="admin-form-actions"><button className="button" disabled={busy}>{busy ? "Zapisuję…" : "Zapisz dzieło"}</button>{editingArtwork && <button type="button" className="admin-button" onClick={resetArtworkForm}>Anuluj edycję</button>}</div>
+      </form></div>;
+    })()}
 
     {section === "tags" && <div className="admin-columns"><div><h2>Tagi</h2><div className="admin-list">{tags.map((tag) => <article className="admin-row" key={tag.id}><strong>{tag.name}</strong><button className="admin-button" type="button" onClick={() => { setEditingTag(tag); setTagName(tag.name); }}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeTag(tag)}>Usuń</button></article>)}{!tags.length && <p>Brak tagów.</p>}</div></div><form className="admin-form admin-editor" onSubmit={saveTag}><h2>{editingTag ? "Edycja tagu" : "Nowy tag"}</h2><label className="admin-field">Nazwa<input required value={tagName} onChange={(event) => setTagName(event.target.value)} /></label><div className="admin-form-actions"><button className="button" disabled={busy}>Zapisz tag</button>{editingTag && <button className="admin-button" type="button" onClick={() => { setEditingTag(null); setTagName(""); }}>Anuluj</button>}</div><p className="admin-help">Tag może być współdzielony przez wiele dzieł. Usunięcie odłącza go od wszystkich dzieł.</p></form></div>}
 
