@@ -19,7 +19,10 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
 
   return (
     <article className="artwork-page">
-      <ArtworkBackButton />
+      <div className="about-header">
+        <ArtworkBackButton />
+        <p className="eyebrow">Dzieło</p>
+      </div>
       <div className="artwork-layout">
         <div className="artwork-view">
           {galleryImages.length ? (
@@ -27,7 +30,6 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
           ) : <p className="media-unavailable">Widok dzieła zostanie opublikowany po zatwierdzeniu.</p>}
         </div>
         <div className="artwork-details">
-          <p className="eyebrow">Dzieło</p>
           <h1>{artwork.title}</h1>
           {artwork.description ? <p>{artwork.description}</p> : null}
           <p className={`status status-${artwork.availability}`}>{availabilityLabels[artwork.availability]}</p>

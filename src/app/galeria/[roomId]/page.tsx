@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -14,7 +15,9 @@ export default async function RoomPage({ params }: RoomPageProps) {
   return (
     <section className="room-page" aria-labelledby="room-title">
       <div className="room-toolbar">
-        <Link className="back-link" href="/galeria">← Wszystkie sale</Link>
+        <Link className="back-arrow" href="/galeria" aria-label="Wszystkie sale">
+          <ArrowLeft size={16} strokeWidth={1.6} className="back-arrow-icon" />
+        </Link>
         <h1 id="room-title">{room.label ?? "Galeria"}</h1>
       </div>
       <div className="room-image-wrap">

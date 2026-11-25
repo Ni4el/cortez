@@ -1,6 +1,18 @@
 export type Database = {
   public: {
     Tables: {
+      authors: {
+        Row: {
+          id: string;
+          slug: string;
+          name: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: Partial<Database["public"]["Tables"]["authors"]["Row"]> & { slug: string; name: string };
+        Update: Partial<Database["public"]["Tables"]["authors"]["Row"]>;
+        Relationships: [];
+      };
       artworks: {
         Row: {
           id: string;
@@ -13,7 +25,7 @@ export type Database = {
           method: "Olej na płycie" | "Olej na płótnie" | "Ołówek na papierze" | null;
           size: string | null;
           place: string | null;
-          author: "cortez" | "rembrant" | "wierusz-kowalski" | null;
+          author: string | null;
           price_pln: number | null;
           publication_status: "draft" | "published" | "hidden";
           frame: string | null;
@@ -81,7 +93,6 @@ export type Database = {
     Enums: {
       enum_availability: "available" | "reserved" | "sold" | "gifted" | "not_for_sale";
       enum_method: "Olej na płycie" | "Olej na płótnie" | "Ołówek na papierze";
-      enum_author: "cortez" | "rembrant" | "wierusz-kowalski";
       enum_status: "draft" | "published" | "hidden";
       sale_mode: "direct" | "inquiry" | "none";
       media_role: "thumbnail" | "wall_view" | "high_resolution" | "room_image";

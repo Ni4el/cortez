@@ -10,7 +10,7 @@ export type Artwork = {
   size?: string;
   place?: string;
   frame?: string;
-  author?: "cortez" | "rembrant" | "wierusz-kowalski";
+  author?: string;
   availability: "available" | "reserved" | "sold" | "gifted" | "not_for_sale";
   isPublished: boolean;
   isMain: boolean;

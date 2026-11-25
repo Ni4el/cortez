@@ -8,10 +8,10 @@ const links = [
   ["/#start", "Start"],
   ["/#galeria", "Galeria"],
   ["/#dziela", "Dzieła"],
-  ["/wystawy", "Wystawy"],
+  ["/#wystawy", "Wystawy"],
   ["/#o-autorze", "O autorze"],
-  ["/certyfikacja", "Certyfikacja"],
-  ["/zamow", "Zamów"],
+  ["/#certyfikacja", "Certyfikacja"],
+  ["/#zamow", "Zamów"],
   ["/#kontakt", "Kontakt"],
 ] as const;
 

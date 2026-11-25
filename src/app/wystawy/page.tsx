@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { EmptyState } from "@/components/empty-state";
 import { getPublicExhibitions } from "@/lib/catalog.server";
+import { LandingBackButton } from "@/components/landing-back-button";
 
 export const metadata = { title: "Wystawy", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -14,12 +15,15 @@ export default async function ExhibitionsPage() {
   const exhibitions = await getPublicExhibitions();
 
   if (!exhibitions.length) {
-    return <EmptyState eyebrow="Wystawy" title="Informacje o wystawach"><p>Aktualnie nie ma opublikowanych wystaw.</p></EmptyState>;
+    return <EmptyState eyebrow="Wystawy" title="Informacje o wystawach" backButton={<LandingBackButton defaultHash="#wystawy" />}><p>Aktualnie nie ma opublikowanych wystaw.</p></EmptyState>;
   }
 
   return (
     <section className="content-section exhibitions-page" aria-labelledby="exhibitions-title">
-      <p className="eyebrow">Wystawy</p>
+      <div className="about-header">
+        <LandingBackButton defaultHash="#wystawy" />
+        <p className="eyebrow">Wystawy</p>
+      </div>
       <h1 id="exhibitions-title">Wystawy i wydarzenia</h1>
       <div className="exhibition-list">
         {exhibitions.map((exhibition) => {

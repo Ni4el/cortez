@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -29,8 +30,14 @@ export function ArtworkBackButton() {
   };
 
   return (
-    <a href={returnUrl} onClick={handleClick} className="back-link">
-      ← Wróć do katalogu
+    <a
+      href={returnUrl}
+      onClick={handleClick}
+      className="back-arrow"
+      aria-label="Wróć do katalogu"
+      title="Wróć do katalogu"
+    >
+      <ArrowLeft size={16} strokeWidth={1.6} className="back-arrow-icon" />
     </a>
   );
 }

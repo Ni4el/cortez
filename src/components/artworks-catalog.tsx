@@ -32,10 +32,6 @@ export function ArtworksCatalog({ initialArtworks }: { initialArtworks: Artwork[
   return (
     <>
       <div className="catalog-header">
-        <div>
-          <p className="eyebrow">Katalog</p>
-          <h1 id="artworks-title">Dzieła</h1>
-        </div>
         <div className="catalog-search">
           <div className="search-input-wrap">
             <svg

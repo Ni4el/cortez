@@ -10,21 +10,24 @@ type Tag = Row & { id: string; name: string };
 type Room = Row & { id: string; slug: string; label: string | null; parent_room_id: string | null; is_primary: boolean };
 type Exhibition = Row & { id: string; slug: string; title: string };
 type Media = Row & { id: string; artwork_id: string | null; room_id: string | null; exhibition_id: string | null; storage_bucket: string; storage_path: string; role: string };
-type Section = "photos" | "tags" | "gallery" | "exhibitions";
+type Author = Row & { id: string; slug: string; name: string };
+type Section = "photos" | "tags" | "authors" | "gallery" | "exhibitions";
 
 const sections: { id: Section; label: string }[] = [
   { id: "photos", label: "Zdjęcia" },
   { id: "tags", label: "Tagi" },
+  { id: "authors", label: "Autorzy" },
   { id: "gallery", label: "Galeria" },
   { id: "exhibitions", label: "Wystawy" },
 ];
 
 const emptyArtwork = {
-  slug: "", title: "", description: "", year: "", sale_mode: "inquiry", availability: "not_for_sale",
-  method: "", size: "", place: "", author: "", price_pln: "", publication_status: "draft", frame: "", is_main: "false", order: "0",
+  slug: "", title: "", description: "", year: "", sale_mode: "inquiry", availability: "available",
+  method: "Olej na płótnie", size: "", place: "", author: "", price_pln: "", publication_status: "published", frame: "", is_main: "false", order: "0",
 };
 const emptyRoom = { slug: "", label: "", parent_room_id: "", is_primary: false, is_published: false, sort_order: "0" };
 const emptyExhibition = { slug: "", title: "", venue: "", start_date: "", end_date: "", description: "", is_published: false, sort_order: "0" };
+const emptyAuthor = { slug: "", name: "" };
 
 function slugify(value: string) {
   return value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -53,6 +56,9 @@ export default function AdminPage() {
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
   const [artworkTags, setArtworkTags] = useState<{ artwork_id: string; tag_id: string }[]>([]);
+  const [authors, setAuthors] = useState<Author[]>([]);
+  const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
+  const [authorForm, setAuthorForm] = useState<Record<string, string>>(emptyAuthor);
   const [roomArtwork, setRoomArtwork] = useState<{ artwork_id: string; room_id: string }[]>([]);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -89,6 +95,7 @@ export default function AdminPage() {
     const results = await Promise.all([
       supabase.from("artworks").select("*").order("created_at", { ascending: false }),
       supabase.from("tags").select("*").order("name"),
+      supabase.from("authors").select("*").order("name"),
       supabase.from("rooms").select("*").order("sort_order"),
       supabase.from("exhibitions").select("*").order("sort_order"),
       supabase.from("media_assets").select("*"),
@@ -99,11 +106,12 @@ export default function AdminPage() {
     if (failed) setError(messageFrom(failed, "Nie udało się pobrać danych panelu."));
     setArtworks((results[0].data ?? []) as Artwork[]);
     setTags((results[1].data ?? []) as Tag[]);
-    setRooms((results[2].data ?? []) as Room[]);
-    setExhibitions((results[3].data ?? []) as Exhibition[]);
-    setMedia((results[4].data ?? []) as Media[]);
-    setArtworkTags((results[5].data ?? []) as { artwork_id: string; tag_id: string }[]);
-    setRoomArtwork((results[6].data ?? []) as { artwork_id: string; room_id: string }[]);
+    setAuthors((results[2].data ?? []) as Author[]);
+    setRooms((results[3].data ?? []) as Room[]);
+    setExhibitions((results[4].data ?? []) as Exhibition[]);
+    setMedia((results[5].data ?? []) as Media[]);
+    setArtworkTags((results[6].data ?? []) as { artwork_id: string; tag_id: string }[]);
+    setRoomArtwork((results[7].data ?? []) as { artwork_id: string; room_id: string }[]);
     if (!editingArtwork) {
       setSelectedTags([]);
       setArtworkFiles([]);
@@ -316,6 +324,44 @@ export default function AdminPage() {
     if (result.error) setError(result.error.message); else { setNotice("Tag usunięto."); await verifyAndLoad(); }
   }
 
+  async function saveAuthor(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault(); clearMessages(); setBusy(true);
+    if (!supabase) { setBusy(false); return; }
+    try {
+      const slug = slugify(authorForm.slug || authorForm.name);
+      if (!slug) throw new Error("Podaj nazwę autora.");
+      const payload = { slug, name: authorForm.name.trim() || null };
+      let id = editingAuthor?.id;
+      if (id) { const { error: saveError } = await supabase.from("authors").update(payload).eq("id", id); if (saveError) throw saveError; }
+      else { const { data, error: saveError } = await supabase.from("authors").insert(payload).select("id").single(); if (saveError) throw saveError; id = String(data.id); }
+      setNotice("Autora zapisano.");
+      resetAuthorForm();
+      await verifyAndLoad();
+    } catch (cause) { setError(messageFrom(cause as { message?: string }, "Nie udało się zapisać autora.")); }
+    finally { setBusy(false); }
+  }
+
+  async function removeAuthor(author: Author) {
+    if (!supabase || !window.confirm(`Usunąć autora „${author.name}”? Dzieła przypisane do tego autora będą miały autora ustawionego na pustego.`)) return;
+    clearMessages(); setBusy(true);
+    try {
+      const { error: deleteError } = await supabase.from("authors").delete().eq("id", author.id);
+      if (deleteError) throw deleteError;
+      setNotice("Autora usunięto."); await verifyAndLoad();
+    } catch (cause) { setError(messageFrom(cause as { message?: string }, "Nie udało się usunąć autora.")); }
+    finally { setBusy(false); }
+  }
+
+  function editAuthor(author: Author) {
+    setEditingAuthor(author);
+    setAuthorForm({ slug: author.slug, name: author.name });
+  }
+
+  function resetAuthorForm() {
+    setEditingAuthor(null);
+    setAuthorForm(emptyAuthor);
+  }
+
   function editRoom(room: Room) {
     setEditingRoom(room);
     setRoomForm({ slug: room.slug, label: room.label ?? "", parent_room_id: room.parent_room_id ?? "", is_primary: room.is_primary, is_published: Boolean(room.is_published), sort_order: String(room.sort_order ?? 0) });
@@ -423,7 +469,7 @@ export default function AdminPage() {
 
   return <section className="admin-panel">
     <header className="admin-heading"><div><p className="eyebrow">Portfolio Cortez</p><h1>Panel administracyjny</h1></div><button type="button" className="admin-button" onClick={() => void logout()}>Wyloguj</button></header>
-    <nav className="admin-tabs" aria-label="Sekcje panelu">{sections.map((item) => <button key={item.id} type="button" className={section === item.id ? "is-active" : ""} onClick={() => { clearMessages(); setSection(item.id); resetArtworkForm(); }}>{item.label}</button>)}</nav>
+    <nav className="admin-tabs" aria-label="Sekcje panelu">{sections.map((item) => <button key={item.id} type="button" className={section === item.id ? "is-active" : ""} onClick={() => { clearMessages(); setSection(item.id); resetArtworkForm(); resetAuthorForm(); }}>{item.label}</button>)}</nav>
     {notice && <p className="admin-notice" role="status">{notice}</p>}{error && <p className="admin-error" role="alert">{error}</p>}
 
     {section === "photos" && (() => {
@@ -490,7 +536,7 @@ export default function AdminPage() {
         <label className="admin-field">Slug<input value={artworkForm.slug} onChange={(event) => setArtworkForm({ ...artworkForm, slug: event.target.value })} placeholder="tworzy-się-z-tytułu" /></label>
         <label className="admin-field">Opis<textarea rows={4} value={artworkForm.description} onChange={(event) => setArtworkForm({ ...artworkForm, description: event.target.value })} /></label>
         <div className="admin-field-grid">{[["year","Rok"],["size","Rozmiar"],["place","Miejsce"],["frame","Rama"],["price_pln","Cena PLN"],["order","Kolejność"]].map(([key,label]) => <label className="admin-field" key={key}>{label}<input type={key === "order" || key === "price_pln" ? "number" : "text"} value={artworkForm[key]} onChange={(event) => setArtworkForm({ ...artworkForm, [key]: event.target.value })} /></label>)}</div>
-        {[ ["availability","Dostępność",["available","reserved","sold","gifted","not_for_sale"]], ["publication_status","Publikacja",["draft","published","hidden"]], ["sale_mode","Tryb sprzedaży",["direct","inquiry","none"]], ["method","Technika",["","Olej na płycie","Olej na płótnie","Ołówek na papierze"]], ["author","Autor",["","cortez","rembrant","wierusz-kowalski"]] ].map(([key,label,options]) => <label className="admin-field" key={String(key)}>{String(label)}<select value={artworkForm[String(key)]} onChange={(event) => setArtworkForm({ ...artworkForm, [String(key)]: event.target.value })}>{(options as string[]).map((option) => <option key={option || "empty"} value={option}>{option || "—"}</option>)}</select></label>)}
+        {[ ["availability","Dostępność",["available","reserved","sold","gifted","not_for_sale"]], ["publication_status","Publikacja",["draft","published","hidden"]], ["sale_mode","Tryb sprzedaży",["direct","inquiry","none"]], ["method","Technika",["","Olej na płycie","Olej na płótnie","Ołówek na papierze"]], ["author","Autor",authors.map((a) => a.id)] ].map(([key,label,options]) => <label className="admin-field" key={String(key)}>{String(label)}<select value={artworkForm[String(key)] ?? ""} onChange={(event) => setArtworkForm({ ...artworkForm, [String(key)]: event.target.value })}><option value="">—</option>{(options as string[]).map((option) => { const author = authors.find((a) => a.id === option); return <option key={option} value={option}>{author ? author.name : option}</option>})}</select></label>)}
         <label className="admin-check"><input type="checkbox" checked={artworkForm.is_main === "true"} onChange={(event) => setArtworkForm({ ...artworkForm, is_main: String(event.target.checked) })} /> Użyj jako tła strony głównej</label>
         <fieldset className="admin-tag-picker"><legend>Tagi {selectedTags.length > 0 && <button type="button" className="admin-tag-clear" onClick={() => setSelectedTags([])}>(odznacz wszystkie)</button>}</legend>{tags.map((tag) => <label key={tag.id}><input type="checkbox" id={`tag-${tag.id}`} name={`tag-${tag.id}`} autoComplete="off" checked={selectedTags.includes(tag.id)} onChange={(event) => setSelectedTags(event.target.checked ? [...selectedTags, tag.id] : selectedTags.filter((id) => id !== tag.id))} /> {tag.name}</label>)}{!tags.length && <small>Najpierw dodaj tagi w sekcji Tagi.</small>}</fieldset>
         <div className="admin-form-actions"><button className="button" disabled={busy}>{busy ? "Zapisuję…" : "Zapisz dzieło"}</button>{editingArtwork && <button type="button" className="admin-button" onClick={resetArtworkForm}>Anuluj edycję</button>}</div>
@@ -498,6 +544,7 @@ export default function AdminPage() {
     })()}
 
     {section === "tags" && <div className="admin-columns"><div><h2>Tagi</h2><div className="admin-list">{tags.map((tag) => <article className="admin-row" key={tag.id}><strong>{tag.name}</strong><button className="admin-button" type="button" onClick={() => { setEditingTag(tag); setTagName(tag.name); }}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeTag(tag)}>Usuń</button></article>)}{!tags.length && <p>Brak tagów.</p>}</div></div><form className="admin-form admin-editor" onSubmit={saveTag}><h2>{editingTag ? "Edycja tagu" : "Nowy tag"}</h2><label className="admin-field">Nazwa<input required value={tagName} onChange={(event) => setTagName(event.target.value)} /></label><div className="admin-form-actions"><button className="button" disabled={busy}>Zapisz tag</button>{editingTag && <button className="admin-button" type="button" onClick={() => { setEditingTag(null); setTagName(""); }}>Anuluj</button>}</div><p className="admin-help">Tag może być współdzielony przez wiele dzieł. Usunięcie odłącza go od wszystkich dzieł.</p></form></div>}
+    {section === "authors" && <div className="admin-columns"><div><h2>Autorzy</h2><div className="admin-list">{authors.map((author) => <article className="admin-row" key={author.id}><strong>{author.name}</strong><small>{author.slug}</small><button className="admin-button" type="button" onClick={() => { setEditingAuthor(author); setAuthorForm({ slug: author.slug, name: author.name }); }}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeAuthor(author)}>Usuń</button></article>)}{!authors.length && <p>Brak autorów.</p>}</div></div><form className="admin-form admin-editor" onSubmit={saveAuthor}><h2>{editingAuthor ? "Edycja autora" : "Nowy autor"}</h2><label className="admin-field">Nazwa<input required value={authorForm.name} onChange={(event) => setAuthorForm({ ...authorForm, name: event.target.value })} /></label><label className="admin-field">Slug<input value={authorForm.slug} onChange={(event) => setAuthorForm({ ...authorForm, slug: event.target.value })} placeholder="tworzy-się-z-nazwy" /></label><div className="admin-form-actions"><button className="button" disabled={busy}>{busy ? "Zapisuję…" : "Zapisz autora"}</button>{editingAuthor && <button className="admin-button" type="button" onClick={resetAuthorForm}>Anuluj</button>}</div><p className="admin-help">Autor może być przypisany do wielu dzieł. Usunięcie autora ustawia autora dzieła na pustego.</p></form></div>}
 
     {section === "gallery" && <div className="admin-columns"><div><div className="admin-section-title"><h2>Pomieszczenia</h2><button className="admin-button" type="button" onClick={() => { setEditingRoom(null); setRoomForm(emptyRoom); }}>+ Dodaj pomieszczenie</button></div><div className="admin-list">{rooms.map((room) => { const image = media.find((asset) => asset.room_id === room.id && asset.role === "room_image"); const src = image ? supabase?.storage.from(image.storage_bucket).getPublicUrl(image.storage_path).data.publicUrl : null; return <article className="admin-row" key={room.id}>{src && <Image src={src} alt="" width={64} height={64} unoptimized />}<div><strong>{room.label || room.slug}{room.is_primary ? " · główne" : ""}</strong><small>{room.parent_room_id ? `Podrzędne: ${rooms.find((r) => r.id === room.parent_room_id)?.label || "pomieszczenie główne"}` : "Pomieszczenie główne"}</small></div><button className="admin-button" type="button" onClick={() => editRoom(room)}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeRoom(room)}>Usuń</button></article>; })}{!rooms.length && <p>Utwórz pomieszczenie główne, a następnie dodaj do niego sale.</p>}</div>
       <form className="admin-form admin-inline-form" onSubmit={saveRoomArtwork}><h2>Przypisz dzieło do sali</h2><label className="admin-field">Dzieło<select required value={assignArtwork} onChange={(event) => setAssignArtwork(event.target.value)}><option value="">Wybierz dzieło</option>{artworks.map((artwork) => <option key={artwork.id} value={artwork.id}>{artwork.title || artwork.slug}</option>)}</select></label><label className="admin-field">Pomieszczenie podrzędne<select required value={assignRoom} onChange={(event) => setAssignRoom(event.target.value)}><option value="">Wybierz salę</option>{rooms.filter((room) => Boolean(room.parent_room_id)).map((room) => <option key={room.id} value={room.id}>{room.label || room.slug}</option>)}</select></label><button className="button">Przypisz dzieło</button><div className="admin-list">{roomArtwork.map((link) => { const work = artworks.find((a) => a.id === link.artwork_id); const room = rooms.find((r) => r.id === link.room_id); return <article className="admin-row" key={link.artwork_id}><span>{work?.title || work?.slug} → {room?.label || room?.slug}</span><button className="admin-button admin-danger" type="button" onClick={() => void unassignArtwork(link.artwork_id)}>Odłącz</button></article>; })}</div></form></div>

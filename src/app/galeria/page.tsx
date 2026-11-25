@@ -1,6 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { getRoomSelectorRooms } from "@/lib/catalog";
+import { LandingBackButton } from "@/components/landing-back-button";
 
 export const metadata = { title: "Galeria", robots: { index: false, follow: false } };
 
@@ -9,7 +10,10 @@ export default function GalleryPage() {
 
   return (
     <section className="content-section" aria-labelledby="gallery-title">
-      <p className="eyebrow">Galeria 2D</p>
+      <div className="about-header">
+        <LandingBackButton defaultHash="#galeria" />
+        <p className="eyebrow">Galeria 2D</p>
+      </div>
       <h1 id="gallery-title">Wybierz salę</h1>
       <ul className="room-list room-selector-list">
         {rooms.map((room) => (

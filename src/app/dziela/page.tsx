@@ -2,6 +2,7 @@ import { ArtworksCatalog } from "@/components/artworks-catalog";
 import { EmptyState } from "@/components/empty-state";
 import { sortArtworksBySizeDescending } from "@/lib/catalog";
 import { getPublicArtworks } from "@/lib/catalog.server";
+import { LandingBackButton } from "@/components/landing-back-button";
 
 export const metadata = { title: "Dzieła", robots: { index: false, follow: false } };
 
@@ -12,7 +13,7 @@ export default async function ArtworksPage() {
   const sortedArtworks = sortArtworksBySizeDescending(artworks);
   if (sortedArtworks.length === 0) {
     return (
-      <EmptyState eyebrow="Katalog" title="Katalog jest przygotowywany">
+      <EmptyState eyebrow="Katalog" title="Katalog jest przygotowywany" backButton={<LandingBackButton defaultHash="#dziela" />}>
         <p>Opublikowane dzieła pojawią się tutaj po zatwierdzeniu ich danych i mediów.</p>
       </EmptyState>
     );
@@ -20,6 +21,11 @@ export default async function ArtworksPage() {
 
   return (
     <section className="content-section" aria-labelledby="artworks-title">
+      <div className="about-header">
+        <LandingBackButton defaultHash="#dziela" />
+        <p className="eyebrow">Katalog</p>
+      </div>
+      <h1 id="artworks-title">Dzieła</h1>
       <ArtworksCatalog initialArtworks={sortedArtworks} />
     </section>
   );

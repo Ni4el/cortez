@@ -1,3 +1,4 @@
+import { ArrowLeft } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -20,8 +21,12 @@ export default async function ExhibitionDetailPage({ params }: { params: Promise
 
   return (
     <article className="content-section exhibition-detail" aria-labelledby="exhibition-title">
-      <Link className="back-link" href="/wystawy">← Wszystkie wystawy</Link>
-      <p className="eyebrow">Wystawa</p>
+      <div className="about-header">
+        <Link className="back-arrow" href="/wystawy" aria-label="Wszystkie wystawy">
+          <ArrowLeft size={16} strokeWidth={1.6} className="back-arrow-icon" />
+        </Link>
+        <p className="eyebrow">Wystawa</p>
+      </div>
       <h1 id="exhibition-title">{exhibition.title}</h1>
       {exhibition.venue ? <p className="exhibition-venue">{exhibition.venue}</p> : null}
       {dates ? <p className="exhibition-dates">{dates}</p> : null}
