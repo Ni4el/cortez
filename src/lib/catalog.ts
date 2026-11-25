@@ -10,12 +10,14 @@ export type Artwork = {
   size?: string;
   place?: string;
   frame?: string;
+  colors?: string;
   author?: string;
   availability: "available" | "reserved" | "sold" | "gifted" | "not_for_sale";
   isPublished: boolean;
   isMain: boolean;
   saleMode: SaleMode;
   pricePln?: number;
+  createdAt?: string;
   images: MediaAsset[];
   thumbnail?: MediaAsset;
   wallView?: MediaAsset;
@@ -199,6 +201,11 @@ export const availabilityLabels: Record<Artwork["availability"], string> = {
   not_for_sale: "Nie na sprzedaż",
 };
 
+export function formatPricePln(price: number): string {
+  const parts = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).formatToParts(price);
+  return parts.map((part) => part.type === "group" ? "\u00a0" : part.type === "decimal" ? "," : part.value).join("") + "\u00a0zł";
+}
+
 export function parseArtworkDimensions(size?: string): { width: number; height: number; area: number } {
   if (!size) return { width: 0, height: 0, area: 0 };
   const match = size.match(/(\d+(?:[.,]\d+)?)\s*[×xX*]\s*(\d+(?:[.,]\d+)?)/);
@@ -207,6 +214,21 @@ export function parseArtworkDimensions(size?: string): { width: number; height: 
   const height = parseFloat(match[2].replace(",", "."));
   if (isNaN(width) || isNaN(height)) return { width: 0, height: 0, area: 0 };
   return { width, height, area: width * height };
+}
+
+export function getArtworkSizeCategory(size?: string): "small" | "medium" | "large" | undefined {
+  const { width, height } = parseArtworkDimensions(size);
+  if (width <= 0 || height <= 0) return undefined;
+  const longestSide = Math.max(width, height);
+  if (longestSide < 40) return "small";
+  if (longestSide < 90) return "medium";
+  return "large";
+}
+
+export function getArtworkOrientation(size?: string): "vertical" | "horizontal" | undefined {
+  const { width, height } = parseArtworkDimensions(size);
+  if (width <= 0 || height <= 0 || width === height) return undefined;
+  return width > height ? "vertical" : "horizontal";
 }
 
 export function sortArtworksBySizeDescending(artworks: Artwork[]): Artwork[] {
@@ -225,4 +247,27 @@ export function sortArtworksBySizeDescending(artworks: Artwork[]): Artwork[] {
   });
 }
 
+export type ArtworkSort = "default" | "year-asc" | "year-desc" | "price-asc" | "price-desc" | "newest";
 
+export function sortArtworks(artworks: Artwork[], sort: ArtworkSort): Artwork[] {
+  if (sort === "default") return artworks;
+  return [...artworks].sort((a, b) => {
+    if (sort === "year-asc" || sort === "year-desc") {
+      const first = a.year?.trim();
+      const second = b.year?.trim();
+      if (!first || !second) return first ? -1 : second ? 1 : 0;
+      const comparison = first.localeCompare(second, "pl", { numeric: true });
+      return sort === "year-asc" ? comparison : -comparison;
+    }
+    if (sort === "price-asc" || sort === "price-desc") {
+      const first = a.pricePln;
+      const second = b.pricePln;
+      if (first == null || second == null) return first != null ? -1 : second != null ? 1 : 0;
+      return sort === "price-asc" ? first - second : second - first;
+    }
+    const first = a.createdAt ? Date.parse(a.createdAt) : NaN;
+    const second = b.createdAt ? Date.parse(b.createdAt) : NaN;
+    if (!Number.isFinite(first) || !Number.isFinite(second)) return Number.isFinite(first) ? -1 : Number.isFinite(second) ? 1 : 0;
+    return second - first;
+  });
+}

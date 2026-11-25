@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArtworkImageViewer } from "@/components/artwork-image-viewer";
 import { ArtworkBackButton } from "@/components/artwork-back-button";
-import { availabilityLabels, canOfferDirectSale } from "@/lib/catalog";
+import { availabilityLabels, canOfferDirectSale, formatPricePln } from "@/lib/catalog";
 import { getPublicArtwork } from "@/lib/catalog.server";
 
 export const dynamic = "force-dynamic";
@@ -38,7 +38,7 @@ export default async function ArtworkPage({ params }: ArtworkPageProps) {
             {artwork.method ? <><dt>Technika</dt><dd>{artwork.method}</dd></> : null}
             {artwork.size ? <><dt>Rozmiar</dt><dd>{artwork.size}</dd></> : null}
           </dl>
-          {typeof artwork.pricePln === "number" ? <p className="artwork-price">{new Intl.NumberFormat("pl-PL", { style: "currency", currency: "PLN" }).format(artwork.pricePln)}</p> : null}
+          {typeof artwork.pricePln === "number" ? <p className="artwork-price">{formatPricePln(artwork.pricePln)}</p> : null}
           {directSaleAvailable ? (
             <p className="action-note">Zakup bezpośredni zostanie włączony po skonfigurowaniu płatności i dostawy.</p>
           ) : artwork.saleMode === "inquiry" ? (

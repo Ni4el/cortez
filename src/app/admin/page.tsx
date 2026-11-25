@@ -23,7 +23,7 @@ const sections: { id: Section; label: string }[] = [
 
 const emptyArtwork = {
   slug: "", title: "", description: "", year: "", sale_mode: "inquiry", availability: "available",
-  method: "Olej na płótnie", size: "", place: "", author: "", price_pln: "", publication_status: "published", frame: "", is_main: "false", order: "0",
+  method: "Olej na płótnie", size: "", place: "", author: "", price_pln: "", publication_status: "published", frame: "", colors: "", is_main: "false", order: "0",
 };
 const emptyRoom = { slug: "", label: "", parent_room_id: "", is_primary: false, is_published: false, sort_order: "0" };
 const emptyExhibition = { slug: "", title: "", venue: "", start_date: "", end_date: "", description: "", is_published: false, sort_order: "0" };
@@ -201,6 +201,7 @@ export default function AdminPage() {
         size: artworkForm.size || null,
         place: artworkForm.place || null,
         frame: artworkForm.frame || null,
+        colors: artworkForm.colors.trim() || null,
         order: Number(artworkForm.order || 0),
         is_main: artworkForm.is_main === "true",
       };
@@ -536,6 +537,8 @@ export default function AdminPage() {
         <label className="admin-field">Slug<input value={artworkForm.slug} onChange={(event) => setArtworkForm({ ...artworkForm, slug: event.target.value })} placeholder="tworzy-się-z-tytułu" /></label>
         <label className="admin-field">Opis<textarea rows={4} value={artworkForm.description} onChange={(event) => setArtworkForm({ ...artworkForm, description: event.target.value })} /></label>
         <div className="admin-field-grid">{[["year","Rok"],["size","Rozmiar"],["place","Miejsce"],["frame","Rama"],["price_pln","Cena PLN"],["order","Kolejność"]].map(([key,label]) => <label className="admin-field" key={key}>{label}<input type={key === "order" || key === "price_pln" ? "number" : "text"} value={artworkForm[key]} onChange={(event) => setArtworkForm({ ...artworkForm, [key]: event.target.value })} /></label>)}</div>
+        <p className="admin-help">W polu Rama wpisz opis ramy lub „bez ramy”, jeśli dzieło jej nie ma. Puste pole oznacza brak informacji.</p>
+        <label className="admin-field">Kolorystyka<input value={artworkForm.colors} onChange={(event) => setArtworkForm({ ...artworkForm, colors: event.target.value })} placeholder="np. niebieski, czerwony" /><small>Oddziel kolory przecinkami.</small></label>
         {[ ["availability","Dostępność",["available","reserved","sold","gifted","not_for_sale"]], ["publication_status","Publikacja",["draft","published","hidden"]], ["sale_mode","Tryb sprzedaży",["direct","inquiry","none"]], ["method","Technika",["","Olej na płycie","Olej na płótnie","Ołówek na papierze"]], ["author","Autor",authors.map((a) => a.id)] ].map(([key,label,options]) => <label className="admin-field" key={String(key)}>{String(label)}<select value={artworkForm[String(key)] ?? ""} onChange={(event) => setArtworkForm({ ...artworkForm, [String(key)]: event.target.value })}><option value="">—</option>{(options as string[]).map((option) => { const author = authors.find((a) => a.id === option); return <option key={option} value={option}>{author ? author.name : option}</option>})}</select></label>)}
         <label className="admin-check"><input type="checkbox" checked={artworkForm.is_main === "true"} onChange={(event) => setArtworkForm({ ...artworkForm, is_main: String(event.target.checked) })} /> Użyj jako tła strony głównej</label>
         <fieldset className="admin-tag-picker"><legend>Tagi {selectedTags.length > 0 && <button type="button" className="admin-tag-clear" onClick={() => setSelectedTags([])}>(odznacz wszystkie)</button>}</legend>{tags.map((tag) => <label key={tag.id}><input type="checkbox" id={`tag-${tag.id}`} name={`tag-${tag.id}`} autoComplete="off" checked={selectedTags.includes(tag.id)} onChange={(event) => setSelectedTags(event.target.checked ? [...selectedTags, tag.id] : selectedTags.filter((id) => id !== tag.id))} /> {tag.name}</label>)}{!tags.length && <small>Najpierw dodaj tagi w sekcji Tagi.</small>}</fieldset>

@@ -29,6 +29,7 @@ export type Database = {
           price_pln: number | null;
           publication_status: "draft" | "published" | "hidden";
           frame: string | null;
+          colors: string | null;
           sale_mode: "direct" | "inquiry" | "none";
           is_main: boolean;
           order: number;

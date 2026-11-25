@@ -8,7 +8,11 @@ export function ArtworkScrollRestorer() {
   const isRestoring = useRef(false);
 
   useEffect(() => {
-    if (pathname !== "/" && pathname !== "/dziela") {
+    if (pathname !== "/dziela" && !/^\/dziela\/[^/]+\/?$/.test(pathname)) {
+      try { sessionStorage.removeItem("artwork_catalog_filters"); } catch {}
+      if ("scrollRestoration" in window.history) window.history.scrollRestoration = "auto";
+    }
+    if (pathname !== "/") {
       return;
     }
 

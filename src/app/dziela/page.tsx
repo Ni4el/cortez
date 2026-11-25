@@ -25,7 +25,6 @@ export default async function ArtworksPage() {
         <LandingBackButton defaultHash="#dziela" />
         <p className="eyebrow">Katalog</p>
       </div>
-      <h1 id="artworks-title">Dzieła</h1>
       <ArtworksCatalog initialArtworks={sortedArtworks} />
     </section>
   );

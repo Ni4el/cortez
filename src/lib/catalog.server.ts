@@ -63,12 +63,14 @@ export async function getPublicArtworks(): Promise<Artwork[]> {
       size: record.size ?? undefined,
       place: record.place ?? undefined,
       frame: record.frame ?? undefined,
+      colors: record.colors ?? undefined,
       author: record.author ?? undefined,
       availability: record.availability,
       isPublished: record.publication_status === "published",
       isMain: record.is_main,
       saleMode: record.sale_mode,
       pricePln: record.price_pln ?? undefined,
+      createdAt: record.created_at,
       images: artworkMedia
         .filter((asset) => asset.role === "thumbnail" || asset.role === "high_resolution")
         .map((asset) => toImage(asset))
@@ -126,4 +128,3 @@ export async function getPublicExhibitions(): Promise<Exhibition[]> {
 export async function getPublicExhibition(slug: string): Promise<Exhibition | undefined> {
   return (await getPublicExhibitions()).find((exhibition) => exhibition.slug === slug);
 }
-
