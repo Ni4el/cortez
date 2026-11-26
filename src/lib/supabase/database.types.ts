@@ -26,7 +26,6 @@ export type Database = {
           size: string | null;
           place: string | null;
           author: string | null;
-          price_pln: number | null;
           publication_status: "draft" | "published" | "hidden";
           frame: string | null;
           colors: string | null;
@@ -38,6 +37,36 @@ export type Database = {
         };
         Insert: Partial<Database["public"]["Tables"]["artworks"]["Row"]> & { slug: string };
         Update: Partial<Database["public"]["Tables"]["artworks"]["Row"]>;
+        Relationships: [];
+      };
+      currencies: {
+        Row: { code: string; name: string; format_locale: string; symbol_position: string; max_fraction_digits: number };
+        Insert: { code: string; name: string; format_locale?: string; symbol_position?: string; max_fraction_digits?: number };
+        Update: Partial<Database["public"]["Tables"]["currencies"]["Row"]>;
+        Relationships: [];
+      };
+      language_currencies: {
+        Row: { language_code: string; currency_code: string };
+        Insert: { language_code: string; currency_code: string };
+        Update: Partial<Database["public"]["Tables"]["language_currencies"]["Row"]>;
+        Relationships: [];
+      };
+      artwork_prices: {
+        Row: { artwork_id: string; currency_code: string; amount: number };
+        Insert: { artwork_id: string; currency_code: string; amount: number };
+        Update: Partial<Database["public"]["Tables"]["artwork_prices"]["Row"]>;
+        Relationships: [];
+      };
+      artwork_translations: {
+        Row: { artwork_id: string; language_code: string; title: string | null; description: string | null };
+        Insert: { artwork_id: string; language_code: string; title?: string | null; description?: string | null };
+        Update: Partial<Database["public"]["Tables"]["artwork_translations"]["Row"]>;
+        Relationships: [];
+      };
+      exhibition_translations: {
+        Row: { exhibition_id: string; language_code: string; title: string | null; description: string | null };
+        Insert: { exhibition_id: string; language_code: string; title?: string | null; description?: string | null };
+        Update: Partial<Database["public"]["Tables"]["exhibition_translations"]["Row"]>;
         Relationships: [];
       };
       rooms: {

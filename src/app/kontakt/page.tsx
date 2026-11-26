@@ -1,12 +1,14 @@
 import { EmptyState } from "@/components/empty-state";
 import { LandingBackButton } from "@/components/landing-back-button";
+import { getLocalizedMetadata, getRequestPreferences } from "@/lib/i18n.server";
 
-export const metadata = { title: "Kontakt", robots: { index: false, follow: false } };
+export const generateMetadata = () => getLocalizedMetadata("contact");
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const { messages: m } = await getRequestPreferences();
   return (
-    <EmptyState eyebrow="Kontakt" title="Kanały kontaktu są przygotowywane" backButton={<LandingBackButton defaultHash="#kontakt" />}>
-      <p>Formularz oraz zatwierdzone dane kontaktowe pojawią się po skonfigurowaniu bezpiecznej obsługi zapytań.</p>
+    <EmptyState eyebrow={m.contact} title={m.contactTitle} backButton={<LandingBackButton defaultHash="#kontakt" />}>
+      <p>{m.contactText}</p>
     </EmptyState>
   );
 }

@@ -3,21 +3,24 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 export function ArtworkBackButton() {
+  const { t } = useLocale();
   const router = useRouter();
   const [returnUrl, setReturnUrl] = useState("/dziela");
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("artwork_scroll_restoration");
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (data && data.url) {
-          setReturnUrl(data.url);
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem("artwork_scroll_restoration");
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.url) setReturnUrl(data.url);
         }
-      }
-    } catch {}
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -34,8 +37,8 @@ export function ArtworkBackButton() {
       href={returnUrl}
       onClick={handleClick}
       className="back-arrow"
-      aria-label="Wróć do katalogu"
-      title="Wróć do katalogu"
+      aria-label={t("backCatalog")}
+      title={t("backCatalog")}
     >
       <ArrowLeft size={16} strokeWidth={1.6} className="back-arrow-icon" />
     </a>

@@ -3,10 +3,10 @@ import { test } from "node:test";
 import { sortArtworks } from "../src/lib/catalog.ts";
 
 const artworks = [
-  { id: "a", year: "2020", pricePln: 6500, createdAt: "2020-01-01T00:00:00Z" },
+  { id: "a", year: "2020", price: 6500, createdAt: "2020-01-01T00:00:00Z" },
   { id: "missing", createdAt: "invalid" },
-  { id: "b", year: "1999", pricePln: 0, createdAt: "2023-06-01T00:00:00Z" },
-  { id: "c", year: "2023", pricePln: 10000, createdAt: "2022-01-01T00:00:00Z" },
+  { id: "b", year: "1999", price: 0, createdAt: "2023-06-01T00:00:00Z" },
+  { id: "c", year: "2023", price: 10000, createdAt: "2022-01-01T00:00:00Z" },
 ];
 
 test("sortowanie roku i ceny w obu kierunkach umieszcza brakujące dane na końcu", () => {

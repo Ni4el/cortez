@@ -3,6 +3,7 @@
 import { ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 type LandingBackButtonProps = {
   /** Fallback anchor on the landing page, e.g. "#galeria" */
@@ -10,19 +11,21 @@ type LandingBackButtonProps = {
 };
 
 export function LandingBackButton({ defaultHash = "" }: LandingBackButtonProps) {
+  const { t } = useLocale();
   const router = useRouter();
   const [returnHref, setReturnHref] = useState("/" + defaultHash);
 
   useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem("landing_nav_origin");
-      if (raw) {
-        const data = JSON.parse(raw);
-        if (data && data.href) {
-          setReturnHref(data.href);
+    const timer = window.setTimeout(() => {
+      try {
+        const raw = sessionStorage.getItem("landing_nav_origin");
+        if (raw) {
+          const data = JSON.parse(raw);
+          if (data && data.href) setReturnHref(data.href);
         }
-      }
-    } catch {}
+      } catch {}
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
@@ -39,8 +42,8 @@ export function LandingBackButton({ defaultHash = "" }: LandingBackButtonProps) 
       href={returnHref}
       onClick={handleClick}
       className="back-arrow"
-      aria-label="Powrót"
-      title="Powrót"
+      aria-label={t("back")}
+      title={t("back")}
     >
       <ArrowLeft size={16} strokeWidth={1.6} className="back-arrow-icon" />
     </a>

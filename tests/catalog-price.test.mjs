@@ -1,10 +1,24 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { formatPricePln } from "../src/lib/catalog.ts";
+import { formatPrice } from "../src/lib/catalog.ts";
 
-test("cena ma grupy tysięcy i dwa miejsca po przecinku", () => {
-  assert.equal(formatPricePln(6500), "6\u00a0500,00\u00a0zł");
-  assert.equal(formatPricePln(1000), "1\u00a0000,00\u00a0zł");
-  assert.equal(formatPricePln(1250000.5), "1\u00a0250\u00a0000,50\u00a0zł");
-  assert.equal(formatPricePln(123.45), "123,45\u00a0zł");
+const formats = {
+  PLN: { format_locale: "pl-PL", symbol_position: "locale", max_fraction_digits: 0 },
+  EUR: { format_locale: "pl-PL", symbol_position: "locale", max_fraction_digits: 2 },
+  GBP: { format_locale: "en-GB", symbol_position: "locale", max_fraction_digits: 2 },
+  USD: { format_locale: "pl-PL", symbol_position: "after_no_space", max_fraction_digits: 2 },
+};
+
+test("ceny mają format przypisany do waluty", () => {
+  assert.equal(formatPrice(5370, "PLN", formats.PLN), "5\u00a0370\u00a0zł");
+  assert.equal(formatPrice(5370, "EUR", formats.EUR), "5\u00a0370\u00a0€");
+  assert.equal(formatPrice(5370, "GBP", formats.GBP), "£5,370");
+  assert.equal(formatPrice(5370, "USD", formats.USD), "5\u00a0370$");
+});
+
+test("PLN nie wyświetla groszy, a inne waluty zachowują niecałe kwoty", () => {
+  assert.equal(formatPrice(123.45, "PLN", formats.PLN), "123\u00a0zł");
+  assert.equal(formatPrice(1250.5, "GBP", formats.GBP), "£1,250.50");
+  assert.equal(formatPrice(1250.5, "USD", formats.USD), "1\u00a0250,50$");
+  assert.equal(formatPrice(1250.5, "EUR", formats.EUR), "1\u00a0250,50\u00a0€");
 });

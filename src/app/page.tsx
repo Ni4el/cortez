@@ -6,11 +6,13 @@ import { getPublicArtworks } from "@/lib/catalog.server";
 import { sortArtworksBySizeDescending } from "@/lib/catalog";
 import { PageNavigator } from "@/components/page-navigator";
 import { LandingLink } from "@/components/landing-link";
+import { getRequestPreferences } from "@/lib/i18n.server";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const artworks = await getPublicArtworks();
+  const { messages: m } = await getRequestPreferences();
   const mainArtwork = artworks.find((artwork) => artwork.isMain && artwork.thumbnail);
   const featuredArtworks = sortArtworksBySizeDescending(artworks).slice(0, 4);
 
@@ -26,36 +28,36 @@ export default async function HomePage() {
         <div className="hero-content">
           <p className="eyebrow">Portfolio</p>
           <h1 id="home-title">
-            Przestrzeń<br />dla sztuki
+            {m.heroTitle}
           </h1>
-          <p className="lede">Poznaj obrazy, wystawy i historię twórczości.</p>
+          <p className="lede">{m.heroLead}</p>
           <div className="button-row">
-            <Link className="button" href="#galeria">Odwiedź galerię</Link>
-            <Link className="button button-secondary" href="#dziela">Zobacz dzieła</Link>
+            <Link className="button" href="#galeria">{m.visitGallery}</Link>
+            <Link className="button button-secondary" href="#dziela">{m.seeWorks}</Link>
           </div>
         </div>
       </section>
 
       <section className="landing-section landing-panel" id="galeria">
-        <div><p className="eyebrow">Odkryj przestrzeń</p><h2>Galeria</h2><p>Wejdź do wirtualnej galerii i stań oko w oko z prawdziwą sztuką.</p></div>
-        <LandingLink className="button" href="/galeria">Wybierz salę <span aria-hidden="true">→</span></LandingLink>
+        <div><p className="eyebrow">{m.discoverSpace}</p><h2>{m.gallery}</h2><p>{m.galleryLead}</p></div>
+        <LandingLink className="button" href="/galeria">{m.chooseRoom} <span aria-hidden="true">→</span></LandingLink>
       </section>
 
       <section className="landing-section" id="dziela">
-        <div className="landing-section-heading"><div><p className="eyebrow">Kolekcja</p><h2>Dzieła</h2></div></div>
+        <div className="landing-section-heading"><div><p className="eyebrow">{m.collection}</p><h2>{m.works}</h2></div></div>
         {featuredArtworks.length ? (
           <div className="artwork-grid">
             {featuredArtworks.slice(0, 3).map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} />)}
             <div className="artwork-card discover-cell">
-              <Link className="button" href="/dziela">Odkryj<span aria-hidden="true"> →</span></Link>
+              <Link className="button" href="/dziela">{m.discover}<span aria-hidden="true"> →</span></Link>
             </div>
           </div>
-        ) : <p className="lede">Katalog jest przygotowywany.</p>}
+        ) : <p className="lede">{m.catalogPreparing}</p>}
       </section>
 
       <section className="landing-section landing-panel" id="wystawy">
-        <div><p className="eyebrow">Spotkania ze sztuką</p><h2>Wystawy</h2><p>Informacje o wystawach i wydarzeniach artystycznych.</p></div>
-        <LandingLink className="button" href="/wystawy">Poznaj wystawy <span aria-hidden="true">→</span></LandingLink>
+        <div><p className="eyebrow">{m.artMeetings}</p><h2>{m.exhibitions}</h2><p>{m.exhibitionsLead}</p></div>
+        <LandingLink className="button" href="/wystawy">{m.exploreExhibitions} <span aria-hidden="true">→</span></LandingLink>
       </section>
 
       <section className="landing-section landing-about" id="o-autorze">
@@ -69,26 +71,26 @@ export default async function HomePage() {
           />
         </div>
         <div className="landing-about-content">
-          <p className="eyebrow">Twórca</p>
-          <h2>O autorze</h2>
-          <p>Biografia, inspiracje i droga artystyczna Corteza.</p>
+          <p className="eyebrow">{m.artist}</p>
+          <h2>{m.about}</h2>
+          <p>{m.aboutLead}</p>
           <div className="landing-about-actions">
-            <LandingLink className="button" href="/o-artyscie">Więcej o autorze <span aria-hidden="true">→</span></LandingLink>
+            <LandingLink className="button" href="/o-artyscie">{m.moreAbout} <span aria-hidden="true">→</span></LandingLink>
           </div>
         </div>
       </section>
 
       <section className="landing-section landing-panel" id="certyfikacja">
-        <div><p className="eyebrow">Autentyczność dzieła</p><h2>Certyfikacja</h2><p>Informacje o certyfikatach autentyczności i dokumentacji prac.</p></div>
-        <LandingLink className="button" href="/certyfikacja">Informacje o certyfikacji <span aria-hidden="true">→</span></LandingLink>
+        <div><p className="eyebrow">{m.authenticity}</p><h2>{m.certification}</h2><p>{m.certificationLead}</p></div>
+        <LandingLink className="button" href="/certyfikacja">{m.certificationInfo} <span aria-hidden="true">→</span></LandingLink>
       </section>
 
       <section className="landing-section landing-order" id="zamow">
-        <p className="eyebrow">Indywidualne projekty</p><h2>Zamów</h2><p>Dowiedz się o możliwości zamówienia pracy.</p><LandingLink className="button" href="/zamow">Informacje o zamówieniach</LandingLink>
+        <p className="eyebrow">{m.individualProjects}</p><h2>{m.order}</h2><p>{m.orderLead}</p><LandingLink className="button" href="/zamow">{m.orderInfo}</LandingLink>
       </section>
 
       <section className="landing-section landing-contact" id="kontakt">
-        <div><p className="eyebrow">Kontakt</p><h2>Porozmawiajmy o sztuce</h2><p>Dane kontaktowe zostaną dodane po zatwierdzeniu.</p></div><LandingLink className="button button-secondary" href="/kontakt">Przejdź do kontaktu</LandingLink>
+        <div><p className="eyebrow">{m.contact}</p><h2>{m.contactHeading}</h2><p>{m.contactLead}</p></div><LandingLink className="button button-secondary" href="/kontakt">{m.goToContact}</LandingLink>
       </section>
     </div>
   );

@@ -6,8 +6,10 @@ import { useEffect, useState } from "react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { LanguageToggle } from "@/components/language-toggle";
 import { SideNavigation } from "@/components/side-navigation";
+import { useLocale } from "@/components/locale-provider";
 
 export function SiteHeader() {
+  const { t } = useLocale();
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -24,7 +26,7 @@ export function SiteHeader() {
   return (
     <header className={`site-header${visible ? " is-visible" : " is-hidden"}`}>
       <SideNavigation />
-      <Link className="wordmark" href="/" aria-label="Strona główna">
+      <Link className="wordmark" href="/" aria-label={t("home")}>
         <Image src="/media/cortez_podpis.png" alt="" width={1254} height={1254} priority />
       </Link>
       <div className="header-tools"><ThemeToggle /><LanguageToggle /></div>

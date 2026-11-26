@@ -1,19 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 const sections = [
-  ["start", "Start"],
-  ["galeria", "Galeria"],
-  ["dziela", "Dzieła"],
-  ["wystawy", "Wystawy"],
-  ["o-autorze", "O autorze"],
-  ["certyfikacja", "Certyfikacja"],
-  ["zamow", "Zamów"],
-  ["kontakt", "Kontakt"],
+  ["start", "start"], ["galeria", "gallery"], ["dziela", "works"], ["wystawy", "exhibitions"],
+  ["o-autorze", "about"], ["certyfikacja", "certification"], ["zamow", "order"], ["kontakt", "contact"],
 ] as const;
 
 export function PageNavigator() {
+  const { t } = useLocale();
   const [active, setActive] = useState("start");
   const animationFrame = useRef(0);
 
@@ -85,9 +81,9 @@ export function PageNavigator() {
   }, []);
 
   return (
-    <nav className="page-navigator" aria-label="Nawigator sekcji strony">
+    <nav className="page-navigator" aria-label={t("sectionNavigation")}>
       {sections.map(([id, label]) => (
-        <a key={id} href={`#${id}`} className={active === id ? "is-active" : ""} aria-current={active === id ? "location" : undefined} aria-label={label} />
+        <a key={id} href={`#${id}`} className={active === id ? "is-active" : ""} aria-current={active === id ? "location" : undefined} aria-label={t(label)} />
       ))}
     </nav>
   );

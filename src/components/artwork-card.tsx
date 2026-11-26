@@ -2,9 +2,11 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { type Artwork, availabilityLabels } from "@/lib/catalog";
+import { type Artwork } from "@/lib/catalog";
+import { useLocale } from "@/components/locale-provider";
 
 export function ArtworkCard({ artwork }: { artwork: Artwork }) {
+  const { t } = useLocale();
   if (!artwork.thumbnail || !artwork.title) return null;
 
   const handleCardClick = () => {
@@ -41,7 +43,7 @@ export function ArtworkCard({ artwork }: { artwork: Artwork }) {
           </h2>
           {artwork.year ? <p>{artwork.year}</p> : null}
         </div>
-        <span className={`status status-${artwork.availability}`}>{availabilityLabels[artwork.availability]}</span>
+        <span className={`status status-${artwork.availability}`}>{t(artwork.availability)}</span>
       </div>
     </article>
   );

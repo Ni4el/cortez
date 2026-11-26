@@ -3,16 +3,17 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ArrowDownUp, SlidersHorizontal } from "lucide-react";
 import { ArtworkCard } from "@/components/artwork-card";
+import { useLocale } from "@/components/locale-provider";
 import { availabilityLabels, getArtworkOrientation, getArtworkSizeCategory, sortArtworks, type Artwork, type ArtworkSort } from "@/lib/catalog";
 
 const emptyFilters = { availability: "", year: "", method: "", priceMax: "", frame: "", size: "", sizeCategory: "", orientation: "" };
 const sortOptions: { value: ArtworkSort; label: string }[] = [
-  { value: "default", label: "Domyślnie" },
-  { value: "year-desc", label: "Rok: od najnowszych" },
-  { value: "year-asc", label: "Rok: od najstarszych" },
-  { value: "price-asc", label: "Cena: od najniższej" },
-  { value: "price-desc", label: "Cena: od najwyższej" },
-  { value: "newest", label: "Ostatnio dodane" },
+  { value: "default", label: "sortDefault" },
+  { value: "year-desc", label: "sortYearDesc" },
+  { value: "year-asc", label: "sortYearAsc" },
+  { value: "price-asc", label: "sortPriceAsc" },
+  { value: "price-desc", label: "sortPriceDesc" },
+  { value: "newest", label: "sortNewest" },
 ];
 
 function normalizeText(text: string) {
@@ -30,6 +31,7 @@ function uniqueValues(values: (string | undefined)[]) {
 }
 
 export function ArtworksCatalog({ initialArtworks }: { initialArtworks: Artwork[] }) {
+  const { t, currency } = useLocale();
   const [searchQuery, setSearchQuery] = useState("");
   const [filterOpen, setFilterOpen] = useState(false);
   const [filters, setFilters] = useState(emptyFilters);
@@ -102,7 +104,7 @@ export function ArtworksCatalog({ initialArtworks }: { initialArtworks: Artwork[
       if (filters.availability && artwork.availability !== filters.availability) return false;
       if (filters.year && artwork.year !== filters.year) return false;
       if (filters.method && artwork.method !== filters.method) return false;
-      if (filters.priceMax && (artwork.pricePln == null || artwork.pricePln > Number(filters.priceMax))) return false;
+      if (filters.priceMax && (artwork.price == null || artwork.price > Number(filters.priceMax))) return false;
       if (filters.frame && frameStatus(artwork.frame) !== filters.frame) return false;
       if (filters.size && artwork.size !== filters.size) return false;
       if (filters.sizeCategory && getArtworkSizeCategory(artwork.size) !== filters.sizeCategory) return false;
@@ -120,73 +122,73 @@ export function ArtworksCatalog({ initialArtworks }: { initialArtworks: Artwork[
   return (
     <>
       <div className="catalog-header">
-        <h1 id="artworks-title">Dzieła</h1>
+        <h1 id="artworks-title">{t("works")}</h1>
         <div className="catalog-tools">
           <div className="search-input-wrap">
             <svg className="search-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <circle cx="11" cy="11" r="7" /><line x1="16.5" y1="16.5" x2="22" y2="22" />
             </svg>
-            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Szukaj dzieła po nazwie…" aria-label="Szukaj dzieła po nazwie" className="search-input" />
-            {searchQuery && <button type="button" onClick={() => setSearchQuery("")} className="search-clear" aria-label="Wyczyść wyszukiwanie">✕</button>}
+            <input type="search" value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={t("search")} aria-label={t("searchLabel")} className="search-input" />
+            {searchQuery && <button type="button" onClick={() => setSearchQuery("")} className="search-clear" aria-label={t("clearSearch")}>✕</button>}
           </div>
           <div className="catalog-filter" ref={filterRef}>
-          <button ref={toggleRef} type="button" className="filter-toggle" onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen} aria-controls="artwork-filters" aria-label={activeFilterCount ? `Filtruj dzieła, aktywne filtry: ${activeFilterCount}` : "Filtruj dzieła"}>
+          <button ref={toggleRef} type="button" className="filter-toggle" onClick={() => setFilterOpen((open) => !open)} aria-expanded={filterOpen} aria-controls="artwork-filters" aria-label={activeFilterCount ? `${t("filterWorks")}, ${t("activeFilters")}: ${activeFilterCount}` : t("filterWorks")}>
             <SlidersHorizontal size={20} aria-hidden="true" />
             {activeFilterCount > 0 && <span className="filter-count">{activeFilterCount}</span>}
           </button>
           {filterOpen && <div className="filter-popup" id="artwork-filters" role="region" aria-labelledby="filter-title">
-            <h2 id="filter-title">Filtruj dzieła</h2>
+            <h2 id="filter-title">{t("filterWorks")}</h2>
             <div className="filter-grid">
-              <label className="filter-field">Status sprzedaży
+              <label className="filter-field">{t("saleStatus")}
                 <select value={filters.availability} onChange={(event) => setFilters({ ...filters, availability: event.target.value })}>
-                  <option value="">Wszystkie</option>
-                  {Object.entries(availabilityLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                  <option value="">{t("all")}</option>
+                  {Object.keys(availabilityLabels).map((value) => <option key={value} value={value}>{t(value)}</option>)}
                 </select>
               </label>
-              <label className="filter-field">Rok namalowania
+              <label className="filter-field">{t("yearPainted")}
                 <select value={filters.year} onChange={(event) => setFilters({ ...filters, year: event.target.value })}>
-                  <option value="">Wszystkie</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}
+                  <option value="">{t("all")}</option>{years.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </label>
-              <label className="filter-field">Technika
+              <label className="filter-field">{t("technique")}
                 <select value={filters.method} onChange={(event) => setFilters({ ...filters, method: event.target.value })}>
-                  <option value="">Wszystkie</option>{methods.map((method) => <option key={method} value={method}>{method}</option>)}
+                  <option value="">{t("all")}</option>{methods.map((method) => <option key={method} value={method}>{t(method)}</option>)}
                 </select>
               </label>
-              <label className="filter-field">Cena do (PLN)
+              <label className="filter-field">{t("priceMax")} ({currency})
                 <input type="number" min="0" value={filters.priceMax} onChange={(event) => setFilters({ ...filters, priceMax: event.target.value })} placeholder="np. 5000" />
               </label>
-              <label className="filter-field">Rama
+              <label className="filter-field">{t("frame")}
                 <select value={filters.frame} onChange={(event) => setFilters({ ...filters, frame: event.target.value })}>
-                  <option value="">Wszystkie</option><option value="yes">Z ramą</option><option value="no">Bez ramy</option>
+                  <option value="">{t("all")}</option><option value="yes">{t("framed")}</option><option value="no">{t("unframed")}</option>
                 </select>
               </label>
-              <label className="filter-field">Orientacja
+              <label className="filter-field">{t("orientation")}
                 <select value={filters.orientation} onChange={(event) => setFilters({ ...filters, orientation: event.target.value })}>
-                  <option value="">Wszystkie</option><option value="vertical">Pionowa</option><option value="horizontal">Pozioma</option>
+                  <option value="">{t("all")}</option><option value="vertical">{t("vertical")}</option><option value="horizontal">{t("horizontal")}</option>
                 </select>
               </label>
-              <label className="filter-field">Wielkość
+              <label className="filter-field">{t("sizeCategory")}
                 <select value={filters.sizeCategory} onChange={(event) => setFilters({ ...filters, sizeCategory: event.target.value })}>
-                  <option value="">Wszystkie</option><option value="small">Małe ( &lt;40cm )</option><option value="medium">Średnie ( 40cm-89cm )</option><option value="large">Duże ( &gt;90cm )</option>
+                  <option value="">{t("all")}</option><option value="small">{t("small")}</option><option value="medium">{t("medium")}</option><option value="large">{t("large")}</option>
                 </select>
               </label>
-              <label className="filter-field">Rozmiar
+              <label className="filter-field">{t("dimensions")}
                 <select value={filters.size} onChange={(event) => setFilters({ ...filters, size: event.target.value })}>
-                  <option value="">Wszystkie</option>{sizes.map((size) => <option key={size} value={size}>{size}</option>)}
+                  <option value="">{t("all")}</option>{sizes.map((size) => <option key={size} value={size}>{size}</option>)}
                 </select>
               </label>
             </div>
             <div className="filter-actions">
-              <button type="button" className="button button-secondary" onClick={() => setFilters(emptyFilters)}>Wyczyść filtry</button>
-              <button type="button" className="button" onClick={() => { setFilterOpen(false); toggleRef.current?.focus(); }}>Zamknij</button>
+              <button type="button" className="button button-secondary" onClick={() => setFilters(emptyFilters)}>{t("clearFilters")}</button>
+              <button type="button" className="button" onClick={() => { setFilterOpen(false); toggleRef.current?.focus(); }}>{t("close")}</button>
             </div>
           </div>}
           </div>
           <label className="catalog-sort">
             <ArrowDownUp className="catalog-sort-icon" size={17} aria-hidden="true" />
-            <select aria-label="Sortuj według" value={sort} onChange={(event) => setSort(event.target.value as ArtworkSort)}>
-              {sortOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            <select aria-label={t("sort")} value={sort} onChange={(event) => setSort(event.target.value as ArtworkSort)}>
+              {sortOptions.map((option) => <option key={option.value} value={option.value}>{t(option.label)}</option>)}
             </select>
           </label>
         </div>
@@ -202,8 +204,8 @@ export function ArtworksCatalog({ initialArtworks }: { initialArtworks: Artwork[
       }}>
         {filteredArtworks.map((artwork) => <ArtworkCard key={artwork.id} artwork={artwork} />)}
       </div> : <div className="catalog-empty-search" role="status">
-        <p>Nie znaleziono dzieł pasujących do wyszukiwania i wybranych filtrów.</p>
-        <button type="button" className="button button-secondary" onClick={() => { setSearchQuery(""); setFilters(emptyFilters); }}>Wyczyść wyszukiwanie i filtry</button>
+        <p>{t("noResults")}</p>
+        <button type="button" className="button button-secondary" onClick={() => { setSearchQuery(""); setFilters(emptyFilters); }}>{t("clearSearchFilters")}</button>
       </div>}
     </>
   );

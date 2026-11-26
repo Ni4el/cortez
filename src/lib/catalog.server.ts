@@ -1,18 +1,6 @@
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/lib/supabase/database.types";
+import { createPublicSupabaseClient } from "@/lib/supabase/public";
+import { getRequestPreferences } from "@/lib/i18n.server";
 import type { Artwork, Exhibition, MediaAsset } from "@/lib/catalog";
-
-function createPublicSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) {
-    throw new Error("Brak konfiguracji Supabase. Ustaw NEXT_PUBLIC_SUPABASE_URL i klucz Publishable w .env.local.");
-  }
-  return createClient<Database>(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false },
-    global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) },
-  });
-}
 
 function throwIfError(error: { message: string } | null, action: string): void {
   if (error) throw new Error(`Supabase: ${action}: ${error.message}`);
@@ -30,14 +18,20 @@ export async function getPublicArtworks(): Promise<Artwork[]> {
   if (!records?.length) return [];
 
   const artworkIds = records.map((record) => record.id);
-  const { data: assets, error: mediaError } = await supabase
-    .from("media_assets")
-    .select("*")
-    .in("artwork_id", artworkIds)
-    .eq("is_public", true);
-  throwIfError(mediaError, "nie udało się pobrać zdjęć dzieł");
+  const { language, currency } = await getRequestPreferences();
+  const [mediaResult, translationsResult, pricesResult] = await Promise.all([
+    supabase.from("media_assets").select("*").in("artwork_id", artworkIds).eq("is_public", true),
+    supabase.from("artwork_translations").select("*").in("artwork_id", artworkIds).eq("language_code", language.code),
+    supabase.from("artwork_prices").select("*").in("artwork_id", artworkIds).eq("currency_code", currency),
+  ]);
+  throwIfError(mediaResult.error, "nie udało się pobrać zdjęć dzieł");
+  throwIfError(translationsResult.error, "nie udało się pobrać tłumaczeń dzieł");
+  throwIfError(pricesResult.error, "nie udało się pobrać cen dzieł");
+  const assets = mediaResult.data;
 
   return records.map((record) => {
+    const translation = translationsResult.data?.find((item) => item.artwork_id === record.id);
+    const title = translation?.title?.trim() || record.title;
     const artworkMedia = (assets ?? [])
       .filter((asset) => asset.artwork_id === record.id)
       .sort((first, second) => Number(first.sort_order ?? 0) - Number(second.sort_order ?? 0) || first.created_at.localeCompare(second.created_at));
@@ -46,7 +40,7 @@ export async function getPublicArtworks(): Promise<Artwork[]> {
       const { data } = supabase.storage.from(asset.storage_bucket).getPublicUrl(asset.storage_path);
       return {
         src: data.publicUrl,
-        alt: asset.alt_text || record.title || "Obraz",
+        alt: language.code === "pl" ? asset.alt_text || title || "Obraz" : title || asset.alt_text || "Artwork",
         width: asset.width || 1200,
         height: asset.height || 900,
       };
@@ -56,8 +50,8 @@ export async function getPublicArtworks(): Promise<Artwork[]> {
     const artwork: Artwork = {
       id: record.id,
       slug: record.slug,
-      title: record.title ?? undefined,
-      description: record.description ?? undefined,
+      title: title ?? undefined,
+      description: translation?.description?.trim() || record.description || undefined,
       year: record.year ?? undefined,
       method: record.method ?? undefined,
       size: record.size ?? undefined,
@@ -69,7 +63,7 @@ export async function getPublicArtworks(): Promise<Artwork[]> {
       isPublished: record.publication_status === "published",
       isMain: record.is_main,
       saleMode: record.sale_mode,
-      pricePln: record.price_pln ?? undefined,
+      price: pricesResult.data?.find((item) => item.artwork_id === record.id)?.amount,
       createdAt: record.created_at,
       images: artworkMedia
         .filter((asset) => asset.role === "thumbnail" || asset.role === "high_resolution")
@@ -98,6 +92,10 @@ export async function getPublicExhibitions(): Promise<Exhibition[]> {
   throwIfError(error, "nie udało się pobrać wystaw");
   if (!records?.length) return [];
 
+  const { language } = await getRequestPreferences();
+  const { data: translations, error: translationError } = await supabase.from("exhibition_translations").select("*").in("exhibition_id", records.map((record) => record.id)).eq("language_code", language.code);
+  throwIfError(translationError, "nie udało się pobrać tłumaczeń wystaw");
+
   const { data: assets, error: mediaError } = await supabase
     .from("media_assets")
     .select("*")
@@ -107,19 +105,20 @@ export async function getPublicExhibitions(): Promise<Exhibition[]> {
   throwIfError(mediaError, "nie udało się pobrać zdjęć wystaw");
 
   return records.map((record) => {
+    const translation = translations?.find((item) => item.exhibition_id === record.id);
     const asset = (assets ?? []).find((item) => item.exhibition_id === record.id);
     const image = asset ? (() => {
       const { data } = supabase.storage.from(asset.storage_bucket).getPublicUrl(asset.storage_path);
-      return { src: data.publicUrl, alt: asset.alt_text || record.title, width: asset.width || 1200, height: asset.height || 800 };
+      return { src: data.publicUrl, alt: language.code === "pl" ? asset.alt_text || record.title : translation?.title?.trim() || record.title, width: asset.width || 1200, height: asset.height || 800 };
     })() : undefined;
     return {
       id: record.id,
       slug: record.slug,
-      title: record.title,
+      title: translation?.title?.trim() || record.title,
       venue: record.venue || undefined,
       startDate: record.start_date || undefined,
       endDate: record.end_date || undefined,
-      description: record.description || undefined,
+      description: translation?.description?.trim() || record.description || undefined,
       image,
     };
   });

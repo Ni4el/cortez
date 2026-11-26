@@ -1,8 +1,10 @@
 import { EmptyState } from "@/components/empty-state";
 import { LandingBackButton } from "@/components/landing-back-button";
+import { getLocalizedMetadata, getRequestPreferences } from "@/lib/i18n.server";
 
-export const metadata = { title: "Certyfikacja", robots: { index: false, follow: false } };
+export const generateMetadata = () => getLocalizedMetadata("certification");
 
-export default function CertificationPage() {
-  return <EmptyState eyebrow="Certyfikacja" title="Certyfikaty autentyczności" backButton={<LandingBackButton defaultHash="#certyfikacja" />}><p>Szczegóły certyfikacji i dokumentacji dzieł zostaną uzupełnione po zatwierdzeniu.</p></EmptyState>;
+export default async function CertificationPage() {
+  const { messages: m } = await getRequestPreferences();
+  return <EmptyState eyebrow={m.certification} title={m.certificationTitle} backButton={<LandingBackButton defaultHash="#certyfikacja" />}><p>{m.certificationText}</p></EmptyState>;
 }

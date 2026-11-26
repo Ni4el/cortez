@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Image from "next/image";
 import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
+import { AdminCurrencySettings, AdminTranslations } from "@/components/admin-localization";
+import { sortCurrencies } from "@/lib/locale-values";
+import type { Database } from "@/lib/supabase/database.types";
 
 type Row = Record<string, string | number | boolean | null | undefined>;
 type Artwork = Row & { id: string; slug: string; title: string | null; image_id: string | null };
@@ -11,7 +14,7 @@ type Room = Row & { id: string; slug: string; label: string | null; parent_room_
 type Exhibition = Row & { id: string; slug: string; title: string };
 type Media = Row & { id: string; artwork_id: string | null; room_id: string | null; exhibition_id: string | null; storage_bucket: string; storage_path: string; role: string };
 type Author = Row & { id: string; slug: string; name: string };
-type Section = "photos" | "tags" | "authors" | "gallery" | "exhibitions";
+type Section = "photos" | "tags" | "authors" | "gallery" | "exhibitions" | "currencies";
 
 const sections: { id: Section; label: string }[] = [
   { id: "photos", label: "Zdjęcia" },
@@ -19,11 +22,12 @@ const sections: { id: Section; label: string }[] = [
   { id: "authors", label: "Autorzy" },
   { id: "gallery", label: "Galeria" },
   { id: "exhibitions", label: "Wystawy" },
+  { id: "currencies", label: "Języki i waluty" },
 ];
 
 const emptyArtwork = {
   slug: "", title: "", description: "", year: "", sale_mode: "inquiry", availability: "available",
-  method: "Olej na płótnie", size: "", place: "", author: "", price_pln: "", publication_status: "published", frame: "", colors: "", is_main: "false", order: "0",
+  method: "Olej na płótnie", size: "", place: "", author: "", publication_status: "published", frame: "", colors: "", is_main: "false", order: "0",
 };
 const emptyRoom = { slug: "", label: "", parent_room_id: "", is_primary: false, is_published: false, sort_order: "0" };
 const emptyExhibition = { slug: "", title: "", venue: "", start_date: "", end_date: "", description: "", is_published: false, sort_order: "0" };
@@ -56,6 +60,10 @@ export default function AdminPage() {
   const [exhibitions, setExhibitions] = useState<Exhibition[]>([]);
   const [media, setMedia] = useState<Media[]>([]);
   const [artworkTags, setArtworkTags] = useState<{ artwork_id: string; tag_id: string }[]>([]);
+  const [currencies, setCurrencies] = useState<Database["public"]["Tables"]["currencies"]["Row"][]>([]);
+  const [artworkPrices, setArtworkPrices] = useState<Database["public"]["Tables"]["artwork_prices"]["Row"][]>([]);
+  const [priceDataReady, setPriceDataReady] = useState(false);
+  const [priceForm, setPriceForm] = useState<Record<string, string>>({});
   const [authors, setAuthors] = useState<Author[]>([]);
   const [editingAuthor, setEditingAuthor] = useState<Author | null>(null);
   const [authorForm, setAuthorForm] = useState<Record<string, string>>(emptyAuthor);
@@ -101,6 +109,8 @@ export default function AdminPage() {
       supabase.from("media_assets").select("*"),
       supabase.from("artwork_tags").select("artwork_id,tag_id"),
       supabase.from("room_artworks").select("artwork_id,room_id"),
+      supabase.from("currencies").select("*").order("code"),
+      supabase.from("artwork_prices").select("*"),
     ]);
     const failed = results.find((result) => result.error)?.error;
     if (failed) setError(messageFrom(failed, "Nie udało się pobrać danych panelu."));
@@ -112,6 +122,9 @@ export default function AdminPage() {
     setMedia((results[5].data ?? []) as Media[]);
     setArtworkTags((results[6].data ?? []) as { artwork_id: string; tag_id: string }[]);
     setRoomArtwork((results[7].data ?? []) as { artwork_id: string; room_id: string }[]);
+    setCurrencies(sortCurrencies((results[8].data ?? []) as Database["public"]["Tables"]["currencies"]["Row"][]));
+    setArtworkPrices((results[9].data ?? []) as Database["public"]["Tables"]["artwork_prices"]["Row"][]);
+    setPriceDataReady(!results[8].error && !results[9].error);
     if (!editingArtwork) {
       setSelectedTags([]);
       setArtworkFiles([]);
@@ -163,6 +176,7 @@ export default function AdminPage() {
   function resetArtworkForm() {
     setEditingArtwork(null);
     setArtworkForm(emptyArtwork);
+    setPriceForm({});
     setSelectedTags([]);
     setArtworkFiles([]);
     setFileResetKey((prev) => prev + 1);
@@ -173,6 +187,7 @@ export default function AdminPage() {
     const next = { ...emptyArtwork };
     Object.keys(emptyArtwork).forEach((key) => { next[key as keyof typeof emptyArtwork] = String(artwork[key] ?? "") as never; });
     setArtworkForm(next);
+    setPriceForm(Object.fromEntries(artworkPrices.filter((price) => price.artwork_id === artwork.id).map((price) => [price.currency_code, String(price.amount)])));
     setSelectedTags(artworkTags.filter((link) => link.artwork_id === artwork.id).map((link) => link.tag_id));
     setArtworkFiles([]);
     setFileResetKey((prev) => prev + 1);
@@ -187,15 +202,19 @@ export default function AdminPage() {
     const insertedMediaIds: string[] = [];
     let primaryImageUpdated = false;
     try {
+      if (!priceDataReady) throw new Error("Nie udało się pobrać cen lub walut. Odśwież panel przed zapisaniem dzieła.");
       const slug = slugify(artworkForm.slug || artworkForm.title);
       if (!slug) throw new Error("Podaj tytuł lub slug dzieła.");
+      for (const currency of currencies) {
+        const value = priceForm[currency.code]?.trim();
+        if (value && (!Number.isFinite(Number(value)) || Number(value) < 0)) throw new Error(`Nieprawidłowa cena ${currency.code}.`);
+      }
       const payload = {
         ...artworkForm,
         slug,
         title: artworkForm.title || null,
         description: artworkForm.description || null,
         year: artworkForm.year || null,
-        price_pln: artworkForm.price_pln ? Number(artworkForm.price_pln) : null,
         author: artworkForm.author || null,
         method: artworkForm.method || null,
         size: artworkForm.size || null,
@@ -244,6 +263,13 @@ export default function AdminPage() {
             primaryImageUpdated = true;
           }
         }
+      }
+      for (const currency of currencies) {
+        const value = priceForm[currency.code]?.trim();
+        const result = value
+          ? await supabase.from("artwork_prices").upsert({ artwork_id: artworkId, currency_code: currency.code, amount: Number(value) })
+          : await supabase.from("artwork_prices").delete().eq("artwork_id", artworkId).eq("currency_code", currency.code);
+        if (result.error) throw result.error;
       }
       uploadedPaths.length = 0;
       createdArtworkId = undefined;
@@ -351,11 +377,6 @@ export default function AdminPage() {
       setNotice("Autora usunięto."); await verifyAndLoad();
     } catch (cause) { setError(messageFrom(cause as { message?: string }, "Nie udało się usunąć autora.")); }
     finally { setBusy(false); }
-  }
-
-  function editAuthor(author: Author) {
-    setEditingAuthor(author);
-    setAuthorForm({ slug: author.slug, name: author.name });
   }
 
   function resetAuthorForm() {
@@ -536,7 +557,9 @@ export default function AdminPage() {
         <label className="admin-field">Tytuł<input value={artworkForm.title} onChange={(event) => setArtworkForm({ ...artworkForm, title: event.target.value })} /></label>
         <label className="admin-field">Slug<input value={artworkForm.slug} onChange={(event) => setArtworkForm({ ...artworkForm, slug: event.target.value })} placeholder="tworzy-się-z-tytułu" /></label>
         <label className="admin-field">Opis<textarea rows={4} value={artworkForm.description} onChange={(event) => setArtworkForm({ ...artworkForm, description: event.target.value })} /></label>
-        <div className="admin-field-grid">{[["year","Rok"],["size","Rozmiar"],["place","Miejsce"],["frame","Rama"],["price_pln","Cena PLN"],["order","Kolejność"]].map(([key,label]) => <label className="admin-field" key={key}>{label}<input type={key === "order" || key === "price_pln" ? "number" : "text"} value={artworkForm[key]} onChange={(event) => setArtworkForm({ ...artworkForm, [key]: event.target.value })} /></label>)}</div>
+        <p className="admin-help">Aby dodać tłumaczenia, zapisz dzieło i wybierz „Edytuj”. Formularz tłumaczeń znajduje się pod edytorem.</p>
+        <div className="admin-field-grid">{[["year","Rok"],["size","Rozmiar"],["place","Miejsce"],["frame","Rama"],["order","Kolejność"]].map(([key,label]) => <label className="admin-field" key={key}>{label}<input type={key === "order" ? "number" : "text"} value={artworkForm[key]} onChange={(event) => setArtworkForm({ ...artworkForm, [key]: event.target.value })} /></label>)}</div>
+        <div className="admin-field-grid">{currencies.map((currency) => <label className="admin-field" key={currency.code}>Cena {currency.code}<input type="number" min="0" step="0.01" value={priceForm[currency.code] ?? ""} onChange={(event) => setPriceForm({ ...priceForm, [currency.code]: event.target.value })} /></label>)}</div>
         <p className="admin-help">W polu Rama wpisz opis ramy lub „bez ramy”, jeśli dzieło jej nie ma. Puste pole oznacza brak informacji.</p>
         <label className="admin-field">Kolorystyka<input value={artworkForm.colors} onChange={(event) => setArtworkForm({ ...artworkForm, colors: event.target.value })} placeholder="np. niebieski, czerwony" /><small>Oddziel kolory przecinkami.</small></label>
         {[ ["availability","Dostępność",["available","reserved","sold","gifted","not_for_sale"]], ["publication_status","Publikacja",["draft","published","hidden"]], ["sale_mode","Tryb sprzedaży",["direct","inquiry","none"]], ["method","Technika",["","Olej na płycie","Olej na płótnie","Ołówek na papierze"]], ["author","Autor",authors.map((a) => a.id)] ].map(([key,label,options]) => <label className="admin-field" key={String(key)}>{String(label)}<select value={artworkForm[String(key)] ?? ""} onChange={(event) => setArtworkForm({ ...artworkForm, [String(key)]: event.target.value })}><option value="">—</option>{(options as string[]).map((option) => { const author = authors.find((a) => a.id === option); return <option key={option} value={option}>{author ? author.name : option}</option>})}</select></label>)}
@@ -554,5 +577,9 @@ export default function AdminPage() {
       <form className="admin-form admin-editor" onSubmit={saveRoom}><h2>{editingRoom ? "Edycja pomieszczenia" : "Nowe pomieszczenie"}</h2><ImageField id="room-image" current={editingRoom ? (() => { const item = media.find((entry) => entry.room_id === editingRoom.id && entry.role === "room_image"); return item ? supabase?.storage.from(item.storage_bucket).getPublicUrl(item.storage_path).data.publicUrl : undefined; })() : undefined} onChange={(files) => setRoomFile(files[0] ?? null)} /><label className="admin-field">Nazwa<input required value={String(roomForm.label)} onChange={(event) => setRoomForm({ ...roomForm, label: event.target.value, slug: roomForm.slug || slugify(event.target.value) })} /></label><label className="admin-field">Slug<input value={String(roomForm.slug)} onChange={(event) => setRoomForm({ ...roomForm, slug: event.target.value })} /></label><label className="admin-check"><input type="checkbox" checked={roomForm.is_primary === true} onChange={(event) => setRoomForm({ ...roomForm, is_primary: event.target.checked, parent_room_id: "" })} /> Pomieszczenie główne</label>{roomForm.is_primary !== true && <label className="admin-field">Nadrzędne pomieszczenie<select required value={String(roomForm.parent_room_id)} onChange={(event) => setRoomForm({ ...roomForm, parent_room_id: event.target.value })}><option value="">Wybierz główne</option>{rooms.filter((room) => room.is_primary && room.id !== editingRoom?.id).map((room) => <option value={room.id} key={room.id}>{room.label || room.slug}</option>)}</select></label>}<label className="admin-field">Kolejność<input type="number" value={String(roomForm.sort_order)} onChange={(event) => setRoomForm({ ...roomForm, sort_order: event.target.value })} /></label><label className="admin-check"><input type="checkbox" checked={roomForm.is_published === true} onChange={(event) => setRoomForm({ ...roomForm, is_published: event.target.checked })} /> Opublikowane</label><div className="admin-form-actions"><button className="button" disabled={busy}>Zapisz pomieszczenie</button>{editingRoom && <button type="button" className="admin-button" onClick={() => { setEditingRoom(null); setRoomForm(emptyRoom); }}>Anuluj</button>}</div></form></div>}
 
     {section === "exhibitions" && <div className="admin-columns"><div><div className="admin-section-title"><h2>Wystawy</h2><button className="admin-button" type="button" onClick={() => { setEditingExhibition(null); setExhibitionForm(emptyExhibition); setExhibitionFile(null); }}>+ Dodaj wystawę</button></div><div className="admin-list">{exhibitions.map((exhibition) => { const image = media.find((asset) => asset.exhibition_id === exhibition.id); const src = image ? supabase?.storage.from(image.storage_bucket).getPublicUrl(image.storage_path).data.publicUrl : null; return <article className="admin-row" key={exhibition.id}>{src && <Image src={src} alt="" width={64} height={64} unoptimized />}<div><strong>{exhibition.title}</strong><small>{exhibition.slug} · {String(exhibition.venue || "bez miejsca")}</small></div><button className="admin-button" type="button" onClick={() => editExhibition(exhibition)}>Edytuj</button><button className="admin-button admin-danger" type="button" onClick={() => void removeExhibition(exhibition)}>Usuń</button></article>; })}{!exhibitions.length && <p>Brak wystaw.</p>}</div></div><form className="admin-form admin-editor" onSubmit={saveExhibition}><h2>{editingExhibition ? "Edycja wystawy" : "Nowa wystawa"}</h2><ImageField label="Okładka wystawy" id="exhibition-image" current={editingExhibition ? (() => { const item = media.find((entry) => entry.exhibition_id === editingExhibition.id); return item ? supabase?.storage.from(item.storage_bucket).getPublicUrl(item.storage_path).data.publicUrl : undefined; })() : undefined} onChange={(files) => setExhibitionFile(files[0] ?? null)} /><label className="admin-field">Tytuł<input required value={String(exhibitionForm.title)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, title: event.target.value, slug: exhibitionForm.slug || slugify(event.target.value) })} /></label><label className="admin-field">Slug<input value={String(exhibitionForm.slug)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, slug: event.target.value })} /></label><label className="admin-field">Miejsce<input value={String(exhibitionForm.venue)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, venue: event.target.value })} /></label><div className="admin-field-grid"><label className="admin-field">Data od<input type="date" value={String(exhibitionForm.start_date)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, start_date: event.target.value })} /></label><label className="admin-field">Data do<input type="date" value={String(exhibitionForm.end_date)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, end_date: event.target.value })} /></label></div><label className="admin-field">Opis<textarea rows={4} value={String(exhibitionForm.description)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, description: event.target.value })} /></label><label className="admin-field">Kolejność<input type="number" value={String(exhibitionForm.sort_order)} onChange={(event) => setExhibitionForm({ ...exhibitionForm, sort_order: event.target.value })} /></label><label className="admin-check"><input type="checkbox" checked={exhibitionForm.is_published === true} onChange={(event) => setExhibitionForm({ ...exhibitionForm, is_published: event.target.checked })} /> Opublikowana</label><div className="admin-form-actions"><button className="button" disabled={busy}>Zapisz wystawę</button>{editingExhibition && <button type="button" className="admin-button" onClick={() => { setEditingExhibition(null); setExhibitionForm(emptyExhibition); }}>Anuluj</button>}</div><p className="admin-help">Wystawy nie mają przypisanych dzieł.</p></form></div>}
+    {section === "photos" && editingArtwork && <AdminTranslations key={`artwork-${editingArtwork.id}`} kind="artwork" id={editingArtwork.id} />}
+    {section === "exhibitions" && !editingExhibition && <p className="admin-help">Aby dodać tłumaczenia, zapisz wystawę i wybierz „Edytuj”.</p>}
+    {section === "exhibitions" && editingExhibition && <AdminTranslations key={`exhibition-${editingExhibition.id}`} kind="exhibition" id={editingExhibition.id} />}
+    {section === "currencies" && <AdminCurrencySettings onChange={() => { void verifyAndLoad(); }} />}
   </section>;
 }

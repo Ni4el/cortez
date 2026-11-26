@@ -3,8 +3,10 @@
 import Image from "next/image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { MediaAsset } from "@/lib/catalog";
+import { useLocale } from "@/components/locale-provider";
 
 export function ArtworkImageViewer({ images }: { images: MediaAsset[] }) {
+  const { t } = useLocale();
   const [isOpen, setIsOpen] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
@@ -35,26 +37,26 @@ export function ArtworkImageViewer({ images }: { images: MediaAsset[] }) {
 
   return (
     <div className="artwork-viewer">
-      <button className="artwork-image-trigger" type="button" onClick={() => setIsOpen(true)} aria-label="Powiększ zdjęcie dzieła">
+      <button className="artwork-image-trigger" type="button" onClick={() => setIsOpen(true)} aria-label={t("zoomArtwork")}>
         <Image src={image.src} alt={image.alt} width={image.width} height={image.height} priority />
         <span className="zoom-hint" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false"><circle cx="10.5" cy="10.5" r="5.5" /><path d="m15 15 5 5" /></svg>
-          <span>Powiększ</span>
+          <span>{t("zoom")}</span>
         </span>
       </button>
-      {hasMultipleImages ? <div className="artwork-image-controls" aria-label="Zdjęcia dzieła">
-        <button type="button" onClick={showPrevious} aria-label="Poprzednie zdjęcie">‹</button>
+      {hasMultipleImages ? <div className="artwork-image-controls" aria-label={t("artworkImages")}>
+        <button type="button" onClick={showPrevious} aria-label={t("previousImage")}>‹</button>
         <span>{activeIndex + 1} / {images.length}</span>
-        <button type="button" onClick={showNext} aria-label="Następne zdjęcie">›</button>
+        <button type="button" onClick={showNext} aria-label={t("nextImage")}>›</button>
       </div> : null}
 
       {isOpen ? (
-        <div className="image-modal" role="dialog" aria-modal="true" aria-label="Powiększone zdjęcie dzieła" onClick={() => setIsOpen(false)}>
-          <button ref={closeButtonRef} className="image-modal-close" type="button" onClick={() => setIsOpen(false)} aria-label="Zamknij powiększenie">×</button>
+        <div className="image-modal" role="dialog" aria-modal="true" aria-label={t("zoomedArtwork")} onClick={() => setIsOpen(false)}>
+          <button ref={closeButtonRef} className="image-modal-close" type="button" onClick={() => setIsOpen(false)} aria-label={t("closeZoom")}>×</button>
           {hasMultipleImages ? <>
-            <button className="image-modal-nav image-modal-prev" type="button" onClick={(event) => { event.stopPropagation(); showPrevious(); }} aria-label="Poprzednie zdjęcie">‹</button>
+            <button className="image-modal-nav image-modal-prev" type="button" onClick={(event) => { event.stopPropagation(); showPrevious(); }} aria-label={t("previousImage")}>‹</button>
             <span className="image-modal-counter" aria-live="polite">{activeIndex + 1} / {images.length}</span>
-            <button className="image-modal-nav image-modal-next" type="button" onClick={(event) => { event.stopPropagation(); showNext(); }} aria-label="Następne zdjęcie">›</button>
+            <button className="image-modal-nav image-modal-next" type="button" onClick={(event) => { event.stopPropagation(); showNext(); }} aria-label={t("nextImage")}>›</button>
           </> : null}
           <Image className="image-modal-content" src={image.src} alt={image.alt} width={image.width} height={image.height} sizes="96vw" onClick={(event) => event.stopPropagation()} />
         </div>

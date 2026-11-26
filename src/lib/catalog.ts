@@ -16,7 +16,7 @@ export type Artwork = {
   isPublished: boolean;
   isMain: boolean;
   saleMode: SaleMode;
-  pricePln?: number;
+  price?: number;
   createdAt?: string;
   images: MediaAsset[];
   thumbnail?: MediaAsset;
@@ -189,7 +189,7 @@ export function canOfferDirectSale(artwork: Artwork) {
     isPublicArtwork(artwork) &&
     artwork.availability === "available" &&
     artwork.saleMode === "direct" &&
-    typeof artwork.pricePln === "number"
+    typeof artwork.price === "number"
   );
 }
 
@@ -201,9 +201,16 @@ export const availabilityLabels: Record<Artwork["availability"], string> = {
   not_for_sale: "Nie na sprzedaż",
 };
 
-export function formatPricePln(price: number): string {
-  const parts = new Intl.NumberFormat("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).formatToParts(price);
-  return parts.map((part) => part.type === "group" ? "\u00a0" : part.type === "decimal" ? "," : part.value).join("") + "\u00a0zł";
+export function formatPrice(price: number, currency: string, format: { format_locale: string; symbol_position: string; max_fraction_digits: number }): string {
+  const maximumFractionDigits = format.max_fraction_digits;
+  const minimumFractionDigits = Number.isInteger(price) ? 0 : maximumFractionDigits;
+  const options = { minimumFractionDigits, maximumFractionDigits, useGrouping: "always" as const };
+  const formatter = new Intl.NumberFormat(format.format_locale, { ...options, style: "currency", currency, currencyDisplay: "narrowSymbol" });
+  if (format.symbol_position === "after_no_space") {
+    const symbol = formatter.formatToParts(price).find((part) => part.type === "currency")?.value ?? currency;
+    return new Intl.NumberFormat(format.format_locale, options).format(price) + symbol;
+  }
+  return formatter.format(price);
 }
 
 export function parseArtworkDimensions(size?: string): { width: number; height: number; area: number } {
@@ -260,8 +267,8 @@ export function sortArtworks(artworks: Artwork[], sort: ArtworkSort): Artwork[] 
       return sort === "year-asc" ? comparison : -comparison;
     }
     if (sort === "price-asc" || sort === "price-desc") {
-      const first = a.pricePln;
-      const second = b.pricePln;
+      const first = a.price;
+      const second = b.price;
       if (first == null || second == null) return first != null ? -1 : second != null ? 1 : 0;
       return sort === "price-asc" ? first - second : second - first;
     }

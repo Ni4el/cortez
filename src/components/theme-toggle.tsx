@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useSyncExternalStore } from "react";
+import { useLocale } from "@/components/locale-provider";
 
 type Theme = "dark" | "light";
 const storageKey = "cortez-theme";
@@ -20,6 +21,7 @@ function subscribe(callback: () => void) {
 }
 
 export function ThemeToggle() {
+  const { t } = useLocale();
   const theme = useSyncExternalStore(subscribe, getTheme, () => "dark");
 
   useEffect(() => {
@@ -37,9 +39,9 @@ export function ThemeToggle() {
 
   const isLight = theme === "light";
   return (
-    <button className="theme-toggle" type="button" onClick={toggleTheme} aria-pressed={isLight} aria-label={isLight ? "Włącz ciemny motyw" : "Włącz jasny motyw"}>
+    <button className="theme-toggle" type="button" onClick={toggleTheme} aria-pressed={isLight} aria-label={isLight ? t("darkMode") : t("lightMode")}>
       <span aria-hidden="true">{isLight ? "☾" : "☼"}</span>
-      <span>{isLight ? "Ciemny" : "Jasny"}</span>
+      <span>{isLight ? t("dark") : t("light")}</span>
     </button>
   );
 }

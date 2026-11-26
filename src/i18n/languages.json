@@ -1,0 +1,6 @@
+[
+  { "code": "pl", "name": "Polski", "locale": "pl-PL", "defaultCurrency": "PLN" },
+  { "code": "en", "name": "English", "locale": "en-GB", "defaultCurrency": "GBP" },
+  { "code": "de", "name": "Deutsch", "locale": "de-DE", "defaultCurrency": "EUR" },
+  { "code": "fr", "name": "Français", "locale": "fr-FR", "defaultCurrency": "USD" }
+]

@@ -3,22 +3,26 @@ import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
 import { BackToTop } from "@/components/back-to-top";
 import { ArtworkScrollRestorer } from "@/components/artwork-scroll-restorer";
+import { LocaleProvider } from "@/components/locale-provider";
+import { getRequestPreferences } from "@/lib/i18n.server";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: {
-    default: "Portfolio Cortez",
-    template: "%s | Portfolio artysty",
-  },
-  description: "Portfolio artysty — treści zostaną opublikowane po zatwierdzeniu.",
-  robots: { index: false, follow: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { messages } = await getRequestPreferences();
+  return {
+    title: { default: "Portfolio Cortez", template: "%s | Portfolio Cortez" },
+    description: messages.metaDescription,
+    robots: { index: false, follow: false },
+  };
+}
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const preferences = await getRequestPreferences();
   return (
-    <html lang="pl" suppressHydrationWarning>
+    <html lang={preferences.language.code} suppressHydrationWarning>
       <body>
-        <a className="skip-link" href="#main-content">Przejdź do treści</a>
+        <LocaleProvider {...preferences}>
+        <a className="skip-link" href="#main-content">{preferences.messages.skip}</a>
         <ArtworkScrollRestorer />
         <div className="site-shell">
           <SiteHeader />
@@ -26,6 +30,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <BackToTop />
           <SiteFooter />
         </div>
+        </LocaleProvider>
       </body>
     </html>
   );
